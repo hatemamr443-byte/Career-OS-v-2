@@ -2,74 +2,55 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap");
+@import url("https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,700,500,400,900&display=swap");
+
+html,
+body,
+#root {
+    background: #0a0a0b;
+    color: #fafafa;
     margin: 0;
+    min-height: 100vh;
     font-family:
-        -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-        "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+        "Manrope",
+        ui-sans-serif,
+        system-ui,
         sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
 
-code {
-    font-family:
-        source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+.font-display {
+    font-family: "Cabinet Grotesk", "Manrope", sans-serif;
+    letter-spacing: -0.02em;
+}
+.font-mono-ui {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
 }
 
 @layer base {
     :root {
-        --background: 0 0% 100%;
-        --foreground: 0 0% 3.9%;
-        --card: 0 0% 100%;
-        --card-foreground: 0 0% 3.9%;
-        --popover: 0 0% 100%;
-        --popover-foreground: 0 0% 3.9%;
-        --primary: 0 0% 9%;
-        --primary-foreground: 0 0% 98%;
-        --secondary: 0 0% 96.1%;
-        --secondary-foreground: 0 0% 9%;
-        --muted: 0 0% 96.1%;
-        --muted-foreground: 0 0% 45.1%;
-        --accent: 0 0% 96.1%;
-        --accent-foreground: 0 0% 9%;
-        --destructive: 0 84.2% 60.2%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 0 0% 89.8%;
-        --input: 0 0% 89.8%;
-        --ring: 0 0% 3.9%;
-        --chart-1: 12 76% 61%;
-        --chart-2: 173 58% 39%;
-        --chart-3: 197 37% 24%;
-        --chart-4: 43 74% 66%;
-        --chart-5: 27 87% 67%;
-        --radius: 0.5rem;
-    }
-    .dark {
-        --background: 0 0% 3.9%;
+        --background: 240 6% 4%;
         --foreground: 0 0% 98%;
-        --card: 0 0% 3.9%;
+        --card: 240 5% 8%;
         --card-foreground: 0 0% 98%;
-        --popover: 0 0% 3.9%;
+        --popover: 240 5% 8%;
         --popover-foreground: 0 0% 98%;
         --primary: 0 0% 98%;
-        --primary-foreground: 0 0% 9%;
-        --secondary: 0 0% 14.9%;
+        --primary-foreground: 240 6% 4%;
+        --secondary: 240 4% 14%;
         --secondary-foreground: 0 0% 98%;
-        --muted: 0 0% 14.9%;
-        --muted-foreground: 0 0% 63.9%;
-        --accent: 0 0% 14.9%;
+        --muted: 240 4% 14%;
+        --muted-foreground: 240 5% 65%;
+        --accent: 240 4% 14%;
         --accent-foreground: 0 0% 98%;
-        --destructive: 0 62.8% 30.6%;
+        --destructive: 0 72% 51%;
         --destructive-foreground: 0 0% 98%;
-        --border: 0 0% 14.9%;
-        --input: 0 0% 14.9%;
-        --ring: 0 0% 83.1%;
-        --chart-1: 220 70% 50%;
-        --chart-2: 160 60% 45%;
-        --chart-3: 30 80% 55%;
-        --chart-4: 280 65% 60%;
-        --chart-5: 340 75% 55%;
+        --border: 240 4% 16%;
+        --input: 240 4% 16%;
+        --ring: 0 0% 83%;
+        --radius: 0.75rem;
     }
 }
 
@@ -80,36 +61,94 @@ code {
     body {
         @apply bg-background text-foreground;
     }
+
+    ::selection {
+        background: #fafafa;
+        color: #0a0a0b;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    ::-webkit-scrollbar-track {
+        background: #0a0a0b;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #27272a;
+        border-radius: 8px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: #3f3f46;
+    }
 }
 
-@layer base {
-    [data-debug-wrapper="true"] {
-        display: contents !important;
-    }
+/* Subtle grain overlay */
+.grain::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.04;
+    z-index: 1;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
 
-    [data-debug-wrapper="true"] > * {
-        margin-left: inherit;
-        margin-right: inherit;
-        margin-top: inherit;
-        margin-bottom: inherit;
-        padding-left: inherit;
-        padding-right: inherit;
-        padding-top: inherit;
-        padding-bottom: inherit;
-        column-gap: inherit;
-        row-gap: inherit;
-        gap: inherit;
-        border-left-width: inherit;
-        border-right-width: inherit;
-        border-top-width: inherit;
-        border-bottom-width: inherit;
-        border-left-style: inherit;
-        border-right-style: inherit;
-        border-top-style: inherit;
-        border-bottom-style: inherit;
-        border-left-color: inherit;
-        border-right-color: inherit;
-        border-top-color: inherit;
-        border-bottom-color: inherit;
+.glass {
+    background: rgba(10, 10, 11, 0.55);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.card-soft {
+    background: rgba(20, 20, 21, 0.5);
+    border: 1px solid rgba(63, 63, 70, 0.4);
+    border-radius: 0.875rem;
+    transition: all 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.card-soft:hover {
+    border-color: rgba(113, 113, 122, 0.6);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.6);
+}
+
+.dot-grid {
+    background-image: radial-gradient(
+        rgba(255, 255, 255, 0.06) 1px,
+        transparent 1px
+    );
+    background-size: 22px 22px;
+}
+
+@keyframes pulse-ring {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 92, 0, 0.45);
     }
+    70% {
+        box-shadow: 0 0 0 12px rgba(255, 92, 0, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 92, 0, 0);
+    }
+}
+.streak-pulse {
+    animation: pulse-ring 2.4s infinite;
+}
+
+/* Typography helpers */
+.h1-hero {
+    font-family: "Cabinet Grotesk", sans-serif;
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    line-height: 0.95;
+}
+.overline {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #71717a;
+    font-weight: 600;
 }
