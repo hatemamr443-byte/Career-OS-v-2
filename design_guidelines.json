@@ -1,0 +1,94 @@
+{
+  "theme": "dark",
+  "archetype": "4_swiss_high_contrast",
+  "colors": {
+    "background": "#0A0A0B",
+    "surface": "#141415",
+    "border": "#27272A",
+    "text_primary": "#FAFAFA",
+    "text_secondary": "#A1A1AA",
+    "primary": "#FAFAFA",
+    "primary_foreground": "#0A0A0B",
+    "gamification": {
+      "streak": "#FF5C00",
+      "xp": "#FBBF24",
+      "match_score": "#10B981",
+      "ai_insight": "#007AFF"
+    }
+  },
+  "typography": {
+    "fonts": {
+      "headings": "Cabinet Grotesk",
+      "body": "Manrope",
+      "mono": "JetBrains Mono"
+    },
+    "scale": {
+      "h1": "text-4xl sm:text-5xl tracking-tighter font-black",
+      "h2": "text-2xl sm:text-3xl tracking-tight font-bold",
+      "h3": "text-xl sm:text-2xl tracking-tight font-bold",
+      "h4": "text-lg font-semibold",
+      "body": "text-base leading-relaxed text-zinc-400",
+      "small": "text-sm",
+      "overline": "text-xs uppercase tracking-[0.2em] font-bold text-zinc-500"
+    }
+  },
+  "layout": {
+    "grid_system": "Control Room Grid",
+    "dashboard_grid": "grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6",
+    "spacing_scale": "Dense (p-4, p-6, p-8)",
+    "alignment": "Left-aligned content, asymmetric balances. No center-everything."
+  },
+  "components": {
+    "surfaces": {
+      "floating_panel": "bg-black/60 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-2xl",
+      "dashboard_card": "bg-zinc-900/40 border border-zinc-800/50 rounded-xl",
+      "hover_state": "transition-all duration-300 hover:-translate-y-1 hover:border-zinc-700 hover:shadow-xl hover:shadow-black/50"
+    },
+    "buttons": {
+      "primary": "bg-zinc-50 text-black hover:bg-zinc-200 transition-colors font-medium rounded-lg",
+      "secondary": "bg-zinc-800 text-zinc-100 hover:bg-zinc-700 transition-colors font-medium border border-zinc-700 rounded-lg",
+      "ai_action": "bg-blue-600/10 text-blue-500 hover:bg-blue-600/20 border border-blue-500/20 transition-colors rounded-lg"
+    }
+  },
+  "icons": {
+    "library": "@phosphor-icons/react",
+    "installation": "yarn add @phosphor-icons/react",
+    "style": "Duotone or Regular weight, strictly sized."
+  },
+  "media": {
+    "image_urls": [
+      {
+        "url": "https://images.pexels.com/photos/29506609/pexels-photo-29506609.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "hero_background",
+        "description": "Abstract striking neon light on dark backdrop for AI dashboard login or hero banner."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1770012977129-19f856a1f935?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1NzZ8MHwxfHNlYXJjaHw0fHx0ZWNoJTIwY29tcGFueSUyMGxvZ29zJTIwb24lMjBkYXJrJTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3NzcxODg5NTV8MA&ixlib=rb-4.1.0&q=85",
+        "category": "company_logo",
+        "description": "Palantir company logo for job card or match UI."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1762340274767-07fd7e1e5099?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1NzZ8MHwxfHNlYXJjaHwyfHx0ZWNoJTIwY29tcGFueSUyMGxvZ29zJTIwb24lMjBkYXJrJTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3NzcxODg5NTV8MA&ixlib=rb-4.1.0&q=85",
+        "category": "company_logo",
+        "description": "LinkedIn logo for profile import or job tracking."
+      },
+      {
+        "url": "https://images.pexels.com/photos/30608593/pexels-photo-30608593.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "company_logo",
+        "description": "NVIDIA logo for target tech company job card."
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Strictly follow the Dark Mode setup using Obsidian Black (#0A0A0B) as base.",
+    "Do NOT use 'Inter', 'Roboto', or generic sans fonts. Use 'Cabinet Grotesk' for Headings, 'Manrope' for Body, and 'JetBrains Mono' for numbers, XP, and AI match scores.",
+    "Banned: Purple or Teal gradients. Use precise, functional accents: Electric Azure for AI insights, Emerald for match scores, and Ember Orange for streaks.",
+    "Use 'Control Room' grid layout for the dashboard to achieve a dense, professional OS feel rather than generic, blocky cards.",
+    "Floating panels (AI Coach Chat, Job Details overlay) MUST use glassmorphism (bg-black/60 backdrop-blur-2xl border-white/10).",
+    "All interactive elements MUST include data-testid attributes (e.g., data-testid='job-apply-button').",
+    "Do not use Shadcn default card styling blindly. Override to remove shadows on base cards, keeping 1px subtle zinc-800 borders, applying shadows only on floating panels.",
+    "Install @phosphor-icons/react for icons.",
+    "Do NOT use dummy image URLs. Only use the provided media URLs for logos and backgrounds.",
+    "For gamification elements (Streak, XP), use JetBrains Mono font with the specified gamification colors, maintaining a sophisticated, non-childish design."
+  ]
+}
