@@ -99,6 +99,8 @@ async def get_today_missions(user=Depends(get_current_user)):
         })
     if docs:
         await missions.insert_many(docs)
+        for d in docs:
+            d.pop("_id", None)
     return {"missions": docs, "date": today}
 
 
