@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api } from "../lib/api";
 import { Sparkle } from "@phosphor-icons/react";
 
@@ -7,15 +7,19 @@ export default function Profile() {
     const [parsing, setParsing] = useState(false);
     const [saved, setSaved] = useState(false);
 
-    useEffect(() => { load(); }, []);
-    const load = async () => {
+    const load = useCallback(async () => {
         try {
             const r = await api.get("/profile");
             setProfile(r.data || { cv_text: "", headline: "", skills: [], target_roles: [] });
-        } catch {
+        } catch (err) {
+            console.error("profile load failed:", err);
             setProfile({ cv_text: "", headline: "", skills: [], target_roles: [] });
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        load();
+    }, [load]);
 
     const parseCV = async () => {
         setParsing(true);
@@ -23,7 +27,9 @@ export default function Profile() {
             const r = await api.post("/profile/parse-cv", { cv_text: profile.cv_text });
             setProfile(r.data);
             flashSaved();
-        } catch {}
+        } catch (err) {
+            console.error("parse-cv failed:", err);
+        }
         setParsing(false);
     };
 

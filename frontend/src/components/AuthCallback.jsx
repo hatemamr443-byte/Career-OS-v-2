@@ -26,9 +26,14 @@ export default function AuthCallback() {
                 const r = await api.post("/auth/session", { session_id });
                 setUser(r.data.user);
                 // Seed sample data for first-time users (idempotent)
-                try { await api.post("/seed-me"); } catch {}
+                try {
+                    await api.post("/seed-me");
+                } catch (seedErr) {
+                    console.error("seed-me failed:", seedErr);
+                }
                 navigate("/dashboard", { replace: true, state: { user: r.data.user } });
-            } catch {
+            } catch (err) {
+                console.error("session exchange failed:", err);
                 navigate("/", { replace: true });
             }
         })();

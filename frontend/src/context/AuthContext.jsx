@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { api } from "../lib/api";
 
 const AuthContext = createContext(null);
@@ -11,7 +11,8 @@ export function AuthProvider({ children }) {
         try {
             const r = await api.get("/auth/me");
             setUser(r.data);
-        } catch {
+        } catch (err) {
+            console.error("auth check failed:", err);
             setUser(null);
         } finally {
             setLoading(false);
@@ -27,19 +28,22 @@ export function AuthProvider({ children }) {
         checkAuth();
     }, [checkAuth]);
 
-    const logout = async () => {
+    const logout = useCallback(async () => {
         try {
             await api.post("/auth/logout");
-        } catch (e) { /* noop */ }
+        } catch (err) {
+            console.error("logout failed:", err);
+        }
         setUser(null);
         window.location.href = "/";
-    };
+    }, []);
 
-    return (
-        <AuthContext.Provider value={{ user, setUser, loading, checkAuth, logout }}>
-            {children}
-        </AuthContext.Provider>
+    const value = useMemo(
+        () => ({ user, setUser, loading, checkAuth, logout }),
+        [user, loading, checkAuth, logout]
     );
+
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => useContext(AuthContext);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { ArrowLeft, MapPin, Briefcase, CheckCircle, XCircle, Warning, Sparkle, Circle } from "@phosphor-icons/react";
@@ -20,20 +20,24 @@ export default function JobDetail() {
     const [analyzing, setAnalyzing] = useState(false);
     const [applying, setApplying] = useState(false);
 
-    const load = async () => {
+    const load = useCallback(async () => {
         const r = await api.get(`/jobs/${id}`);
         setData(r.data);
         if (r.data.application?.match) setMatch(r.data.application.match);
-    };
+    }, [id]);
 
-    useEffect(() => { load(); }, [id]);
+    useEffect(() => {
+        load();
+    }, [load]);
 
     const runMatch = async () => {
         setAnalyzing(true);
         try {
             const r = await api.post(`/jobs/${id}/match`);
             setMatch(r.data);
-        } catch {}
+        } catch (err) {
+            console.error("match failed:", err);
+        }
         setAnalyzing(false);
     };
 
@@ -42,7 +46,9 @@ export default function JobDetail() {
         try {
             await api.post(`/applications`, { job_id: id, match });
             await load();
-        } catch {}
+        } catch (err) {
+            console.error("apply failed:", err);
+        }
         setApplying(false);
     };
 
@@ -123,16 +129,16 @@ export default function JobDetail() {
                                         <div className="overline mb-2 flex items-center gap-1"><CheckCircle size={12} weight="fill" color="#10B981" /> Strengths</div>
                                         <ul className="space-y-1">
                                             {(match.strengths || []).map((s, i) => (
-                                                <li key={i} className="text-sm text-zinc-300 flex gap-2"><span style={{ color: "#10B981" }}>+</span>{s}</li>
-                                            ))}
+                                            <li key={`str-${s}-${i}`} className="text-sm text-zinc-300 flex gap-2"><span style={{ color: "#10B981" }}>+</span>{s}</li>
+                                        ))}
                                         </ul>
                                     </div>
                                     <div>
                                         <div className="overline mb-2 flex items-center gap-1"><Warning size={12} weight="fill" color="#FBBF24" /> Gaps</div>
                                         <ul className="space-y-1">
                                             {(match.gaps || []).map((s, i) => (
-                                                <li key={i} className="text-sm text-zinc-300 flex gap-2"><span style={{ color: "#FBBF24" }}>!</span>{s}</li>
-                                            ))}
+                                            <li key={`gap-${s}-${i}`} className="text-sm text-zinc-300 flex gap-2"><span style={{ color: "#FBBF24" }}>!</span>{s}</li>
+                                        ))}
                                         </ul>
                                     </div>
                                 </div>
@@ -182,7 +188,7 @@ export default function JobDetail() {
                             <div className="overline mb-3">Lifecycle</div>
                             <div className="space-y-3">
                                 {(application.timeline || []).map((t, i) => (
-                                    <div key={i} className="flex gap-3">
+                                    <div key={`${t.status}-${t.timestamp}-${i}`} className="flex gap-3">
                                         <div className="mt-0.5">
                                             {t.status === "rejected" ? (
                                                 <XCircle size={16} weight="fill" color="#EF4444" />

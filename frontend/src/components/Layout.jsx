@@ -26,7 +26,7 @@ export default function Layout() {
 
     useEffect(() => {
         if (!user) return;
-        api.get("/me/stats").then((r) => setStats(r.data)).catch(() => {});
+        api.get("/me/stats").then((r) => setStats(r.data)).catch((err) => console.error("stats load failed:", err));
     }, [user]);
 
     if (loading || !user) {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api } from "../lib/api";
 import { Link } from "react-router-dom";
 import { MagnifyingGlass, MapPin, Briefcase, ArrowRight } from "@phosphor-icons/react";
@@ -9,16 +9,20 @@ export default function Jobs() {
     const [remoteOnly, setRemoteOnly] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    const load = async () => {
+    const load = useCallback(async () => {
         setLoading(true);
         try {
             const r = await api.get(`/jobs`, { params: { q: q || undefined, remote_only: remoteOnly } });
             setJobs(r.data.jobs || []);
-        } catch {}
+        } catch (err) {
+            console.error("jobs load failed:", err);
+        }
         setLoading(false);
-    };
+    }, [q, remoteOnly]);
 
-    useEffect(() => { load(); /* eslint-disable-next-line */ }, [remoteOnly]);
+    useEffect(() => {
+        load();
+    }, [remoteOnly, load]);
 
     return (
         <div className="px-8 py-8 max-w-7xl mx-auto" data-testid="jobs-page">

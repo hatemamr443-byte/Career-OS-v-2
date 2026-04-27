@@ -10,7 +10,7 @@ export default function AICoachDock({ open, onClose }) {
 
     useEffect(() => {
         if (!open) return;
-        api.get("/coach/messages").then((r) => setMessages(r.data.messages || [])).catch(() => {});
+        api.get("/coach/messages").then((r) => setMessages(r.data.messages || [])).catch((err) => console.error("coach history failed:", err));
     }, [open]);
 
     useEffect(() => {

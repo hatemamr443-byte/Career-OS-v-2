@@ -4,7 +4,16 @@ import { api } from "../lib/api";
 export default function Insights() {
     const [data, setData] = useState(null);
     useEffect(() => {
-        api.get("/insights").then((r) => setData(r.data)).catch(() => {});
+        let cancelled = false;
+        api
+            .get("/insights")
+            .then((r) => {
+                if (!cancelled) setData(r.data);
+            })
+            .catch((err) => console.error("insights load failed:", err));
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     if (!data) return <div className="p-8 text-zinc-500">Loading…</div>;

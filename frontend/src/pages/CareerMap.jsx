@@ -4,7 +4,16 @@ import { api } from "../lib/api";
 export default function CareerMap() {
     const [apps, setApps] = useState([]);
     useEffect(() => {
-        api.get("/applications").then((r) => setApps(r.data.applications || [])).catch(() => {});
+        let cancelled = false;
+        api
+            .get("/applications")
+            .then((r) => {
+                if (!cancelled) setApps(r.data.applications || []);
+            })
+            .catch((err) => console.error("applications load failed:", err));
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     const STATUS_FLOW = ["discovered", "applied", "under_review", "interview", "offer", "rejected"];

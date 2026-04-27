@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
@@ -20,7 +20,7 @@ export default function Dashboard() {
     const [insights, setInsights] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const loadAll = async () => {
+    const loadAll = useCallback(async () => {
         setLoading(true);
         try {
             const [m, s, r, i] = await Promise.all([
@@ -33,18 +33,24 @@ export default function Dashboard() {
             setStats(s.data);
             setRecs(r.data.recommendations || []);
             setInsights(i.data);
-        } catch (e) { /* noop */ }
+        } catch (err) {
+            console.error("dashboard load failed:", err);
+        }
         setLoading(false);
-    };
+    }, []);
 
-    useEffect(() => { loadAll(); }, []);
+    useEffect(() => {
+        loadAll();
+    }, [loadAll]);
 
     const completeMission = async (id) => {
         try {
             const r = await api.post(`/missions/${id}/complete`);
             setMissions((ms) => ms.map((x) => (x.mission_id === id ? { ...x, completed: true } : x)));
             setStats((s) => ({ ...s, xp: r.data.xp, level: r.data.level, streak: r.data.streak }));
-        } catch {}
+        } catch (err) {
+            console.error("mission complete failed:", err);
+        }
     };
 
     const completedCount = missions.filter((m) => m.completed).length;

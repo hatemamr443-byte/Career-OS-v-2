@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api } from "../lib/api";
 import { Sparkle, EnvelopeSimple, Calendar, X, CheckCircle } from "@phosphor-icons/react";
 
@@ -16,20 +16,24 @@ export default function Emails() {
     const [active, setActive] = useState(null);
     const [classifying, setClassifying] = useState(false);
 
-    const load = async () => {
+    const load = useCallback(async () => {
         const r = await api.get("/emails");
         setThreads(r.data.threads || []);
-        if (!active && r.data.threads?.length) setActive(r.data.threads[0]);
-    };
+        setActive((curr) => curr || (r.data.threads?.length ? r.data.threads[0] : null));
+    }, []);
 
-    useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+    useEffect(() => {
+        load();
+    }, [load]);
 
     const classifyAll = async () => {
         setClassifying(true);
         try {
             await api.post("/emails/classify-all");
             await load();
-        } catch {}
+        } catch (err) {
+            console.error("classify-all failed:", err);
+        }
         setClassifying(false);
     };
 
@@ -108,7 +112,7 @@ export default function Emails() {
                                         <div className="mt-2 space-y-1">
                                             <div className="overline">Next Steps</div>
                                             {active.last_message.next_steps.map((s, i) => (
-                                                <div key={i} className="text-sm flex gap-2"><CheckCircle size={14} weight="fill" color="#10B981" />{s}</div>
+                                                <div key={`step-${s}-${i}`} className="text-sm flex gap-2"><CheckCircle size={14} weight="fill" color="#10B981" />{s}</div>
                                             ))}
                                         </div>
                                     )}

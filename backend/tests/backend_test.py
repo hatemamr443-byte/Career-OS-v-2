@@ -5,7 +5,7 @@ import pytest
 import requests
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://job-agent-ai-6.preview.emergentagent.com").rstrip("/")
-TOKEN = "test_session_career_os"
+TOKEN = os.environ.get("TEST_SESSION_TOKEN", "test_session_career_os")
 HEADERS = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
 
 
