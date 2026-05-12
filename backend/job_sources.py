@@ -204,37 +204,30 @@ async def _insert_dedup(docs: List[Dict[str, Any]]) -> int:
 
 
 async def ingest_all(query: str = "", limit_per_source: int = 25) -> Dict[str, Any]:
-    """Run all sources in priority order. Returns per-source stats.
+    """Run all sources IN PARALLEL via asyncio.gather. Returns per-source stats.
     Country list controlled by ADZUNA_COUNTRIES env (comma-separated). Default: es,gb.
     (Portugal is NOT supported by Adzuna — supported list: at,au,be,br,ca,ch,de,es,fr,gb,in,it,mx,nl,nz,pl,ru,sg,us,za.)
     """
-    breakdown = {}
-    errors = {}
-
     countries = [c.strip() for c in os.environ.get("ADZUNA_COUNTRIES", "es,gb").split(",") if c.strip()]
     jooble_location = os.environ.get("JOOBLE_LOCATION", "Lisbon")
 
-    # 1+. Adzuna (one call per configured country)
+    # Build parallel tasks: (source_name, coroutine)
+    tasks: List[tuple] = []
     for country in countries:
-        try:
-            docs = await fetch_adzuna(country, query=query, limit=limit_per_source)
-            breakdown[f"adzuna_{country}"] = {"fetched": len(docs), "inserted": await _insert_dedup(docs)}
-        except Exception as ex:
-            errors[f"adzuna_{country}"] = str(ex)
+        tasks.append((f"adzuna_{country}", fetch_adzuna(country, query=query, limit=limit_per_source)))
+    tasks.append(("jooble", fetch_jooble(query=query, location=jooble_location, limit=limit_per_source)))
+    tasks.append(("remotive", fetch_remotive(query=query, limit=limit_per_source)))
 
-    # 2. Jooble
-    try:
-        docs = await fetch_jooble(query=query, location=jooble_location, limit=limit_per_source)
-        breakdown["jooble"] = {"fetched": len(docs), "inserted": await _insert_dedup(docs)}
-    except Exception as ex:
-        errors["jooble"] = str(ex)
+    # Fire all sources concurrently — p99 drops from sum-of-latencies to max-of-latencies
+    results = await asyncio.gather(*(t for _, t in tasks), return_exceptions=True)
 
-    # 3. Remotive
-    try:
-        docs = await fetch_remotive(query=query, limit=limit_per_source)
-        breakdown["remotive"] = {"fetched": len(docs), "inserted": await _insert_dedup(docs)}
-    except Exception as ex:
-        errors["remotive"] = str(ex)
+    breakdown: Dict[str, Dict[str, int]] = {}
+    errors: Dict[str, str] = {}
+    for (name, _), result in zip(tasks, results):
+        if isinstance(result, Exception):
+            errors[name] = str(result)
+            continue
+        breakdown[name] = {"fetched": len(result), "inserted": await _insert_dedup(result)}
 
     total_inserted = sum(b.get("inserted", 0) for b in breakdown.values())
     return {

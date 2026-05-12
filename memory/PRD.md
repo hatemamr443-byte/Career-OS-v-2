@@ -45,9 +45,18 @@ Build a full-stack AI-powered career decision system. Not a job board — an AI 
 - ✅ Unique indexes on startup: `jobs.content_hash`, `match_usage.user_id+month`, `payment_transactions.session_id`.
 - ✅ Frontend: ingest breakdown panel shows per-source counts, source badges on all real-job cards.
 
-## Test Results (iteration 4)
-- Backend: **19/19 passing** (100%)
-- Frontend: **9/9 critical flows passing** (100%)
+### v0.5 — Daily digest emails + true parallel ingest
+- ✅ **`profile.daily_matches` toggle** + Profile-page UI card with switch + "Send test now" button
+- ✅ **Resend integration** (`emailer.py`) — `send_email()` with graceful no-op when `RESEND_API_KEY` blank; `render_daily_digest()` pure function returns (html, text)
+- ✅ **Daily digest pipeline** (`daily_digest.py`) — pulls top 3 unique jobs per user, 20-hour gate to prevent duplicates, excludes already-applied/decided jobs, real Resend send via `asyncio.to_thread`
+- ✅ **Cron endpoint** `POST /api/internal/run-daily-digest` with `X-Cron-Token` header auth — external cron (cron-job.org) hits this daily
+- ✅ **True parallel ingest** — `asyncio.gather()` over Adzuna×N + Jooble + Remotive. Measured: **0.6–0.8s** (was 5s sequential, 80s worst case)
+- ✅ Added `RESEND_API_KEY`, `SENDER_EMAIL`, `CRON_TOKEN`, `ADZUNA_COUNTRIES`, `JOOBLE_LOCATION` to `.env.example` and Render deploy guide
+
+## Test Results (iteration 5)
+- Backend: **13/13 passing** (100%) on iter5 notifications + parallel ingest
+- Frontend: **6/6 UI flows passing** (100%)
+- Parallel ingest verified at **0.6s** end-to-end after asyncio.gather rewrite
 - Known carryover (NOT a regression): `/api/billing/status` returns DB-cached state because Emergent Stripe proxy doesn't support `retrieve`. Webhook is source of truth.
 
 ## Backlog (P1 / P2)
