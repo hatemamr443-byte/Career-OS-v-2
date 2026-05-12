@@ -1,11 +1,14 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { api } from "../lib/api";
-import { Sparkle } from "@phosphor-icons/react";
+import { Sparkle, UploadSimple } from "@phosphor-icons/react";
 
 export default function Profile() {
     const [profile, setProfile] = useState(null);
     const [parsing, setParsing] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [uploadError, setUploadError] = useState(null);
     const [saved, setSaved] = useState(false);
+    const fileInputRef = useRef(null);
 
     const load = useCallback(async () => {
         try {
@@ -31,6 +34,28 @@ export default function Profile() {
             console.error("parse-cv failed:", err);
         }
         setParsing(false);
+    };
+
+    const uploadPdf = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploading(true);
+        setUploadError(null);
+        const fd = new FormData();
+        fd.append("file", file);
+        try {
+            const r = await api.post("/profile/upload-cv", fd, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+            setProfile(r.data);
+            flashSaved();
+        } catch (err) {
+            console.error("upload-cv failed:", err);
+            const detail = err.response?.data?.detail;
+            setUploadError(typeof detail === "string" ? detail : "Upload failed. Please try a text-based PDF.");
+        }
+        setUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
     const save = async () => {
@@ -98,23 +123,52 @@ export default function Profile() {
                 </div>
 
                 <div className="card-soft p-6">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                         <label className="overline">CV / Resume</label>
-                        <button
-                            onClick={parseCV}
-                            disabled={parsing || !profile.cv_text?.trim()}
-                            data-testid="parse-cv-btn"
-                            className="bg-blue-600/10 text-blue-400 border border-blue-500/20 hover:bg-blue-600/20 transition-colors rounded-lg px-3 py-1.5 text-xs flex items-center gap-2 disabled:opacity-50"
-                        >
-                            <Sparkle size={12} weight="fill" />
-                            {parsing ? "Parsing…" : "Parse with Claude"}
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="application/pdf"
+                                onChange={uploadPdf}
+                                className="hidden"
+                                data-testid="cv-file-input"
+                            />
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={uploading}
+                                data-testid="upload-pdf-btn"
+                                className="border border-zinc-700 text-zinc-200 hover:border-zinc-500 transition-colors rounded-lg px-3 py-1.5 text-xs flex items-center gap-2 disabled:opacity-50"
+                            >
+                                <UploadSimple size={12} weight="bold" />
+                                {uploading ? "Uploading…" : "Upload PDF"}
+                            </button>
+                            <button
+                                onClick={parseCV}
+                                disabled={parsing || !profile.cv_text?.trim()}
+                                data-testid="parse-cv-btn"
+                                className="bg-blue-600/10 text-blue-400 border border-blue-500/20 hover:bg-blue-600/20 transition-colors rounded-lg px-3 py-1.5 text-xs flex items-center gap-2 disabled:opacity-50"
+                            >
+                                <Sparkle size={12} weight="fill" />
+                                {parsing ? "Parsing…" : "Parse with Claude"}
+                            </button>
+                        </div>
                     </div>
+                    {profile.cv_filename && (
+                        <div className="text-xs text-zinc-500 mb-2 font-mono-ui" data-testid="cv-filename">
+                            Uploaded: {profile.cv_filename}
+                        </div>
+                    )}
+                    {uploadError && (
+                        <div className="mb-2 p-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs" data-testid="upload-error">
+                            {uploadError}
+                        </div>
+                    )}
                     <textarea
                         className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm font-mono leading-relaxed focus:outline-none focus:border-zinc-600 min-h-[400px]"
                         value={profile.cv_text || ""}
                         onChange={(e) => setProfile({ ...profile, cv_text: e.target.value })}
-                        placeholder="Paste your CV here…"
+                        placeholder="Paste your CV here, or upload a PDF above…"
                         data-testid="profile-cv-textarea"
                     />
                 </div>

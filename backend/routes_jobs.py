@@ -6,6 +6,14 @@ from db import jobs, applications, profiles, decisions
 from models import new_id, Application
 from auth import get_current_user
 from llm_service import llm_call, parse_json_loose
+from job_sources import ingest_remotive
+from quota import (
+    get_effective_plan,
+    get_match_usage,
+    increment_match_usage,
+    usage_summary,
+    FREE_MATCH_LIMIT,
+)
 
 router = APIRouter(prefix="/api", tags=["jobs"])
 
@@ -68,13 +76,29 @@ async def compute_match(job_id: str, user=Depends(get_current_user)):
     if not profile or not profile.get("cv_text"):
         raise HTTPException(400, "Upload your CV first")
 
-    # Cache check
+    # Cache check (returning cached doesn't consume quota)
     cached = await decisions.find_one(
         {"user_id": user["user_id"], "job_id": job_id, "type": "match"},
         {"_id": 0},
     )
     if cached:
         return cached["result"]
+
+    # Quota check — free users limited to FREE_MATCH_LIMIT new matches per month
+    plan = await get_effective_plan(user)
+    if plan == "free":
+        used = await get_match_usage(user["user_id"])
+        if used >= FREE_MATCH_LIMIT:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "quota_exceeded",
+                    "message": f"You've used all {FREE_MATCH_LIMIT} free matches this month. Upgrade to Pro for unlimited matching.",
+                    "matches_used": used,
+                    "matches_limit": FREE_MATCH_LIMIT,
+                    "upgrade_url": "/pricing",
+                },
+            )
 
     system = (
         "You are an elite career strategist AI. Given a candidate's CV and a job, "
@@ -129,7 +153,32 @@ async def compute_match(job_id: str, user=Depends(get_current_user)):
         }},
         upsert=True,
     )
+
+    # Count the match against quota only for free users (cached returns above don't count)
+    if plan == "free":
+        await increment_match_usage(user["user_id"])
+
     return data
+
+
+@router.get("/me/usage")
+async def my_usage(user=Depends(get_current_user)):
+    """Returns current month's usage + quota state. Used by frontend banners."""
+    return await usage_summary(user)
+
+
+@router.post("/jobs/ingest")
+async def ingest_jobs(payload: dict = None, user=Depends(get_current_user)):
+    """Pull real remote jobs from Remotive into the DB. Deduped by source_url."""
+    payload = payload or {}
+    query = (payload.get("query") or "").strip()
+    limit = min(int(payload.get("limit") or 30), 50)
+    try:
+        result = await ingest_remotive(query=query, limit=limit)
+    except Exception as ex:
+        raise HTTPException(502, f"Job ingest failed: {ex}")
+    return result
+
 
 
 @router.get("/applications")

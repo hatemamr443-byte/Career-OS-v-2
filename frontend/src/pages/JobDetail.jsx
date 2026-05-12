@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { ArrowLeft, MapPin, Briefcase, CheckCircle, XCircle, Warning, Sparkle, Circle } from "@phosphor-icons/react";
+import UsageBanner from "../components/UsageBanner";
 
 const STATUS_FLOW = ["discovered", "applied", "under_review", "interview", "offer"];
 const STATUS_LABEL = {
@@ -19,6 +20,7 @@ export default function JobDetail() {
     const [match, setMatch] = useState(null);
     const [analyzing, setAnalyzing] = useState(false);
     const [applying, setApplying] = useState(false);
+    const [quotaError, setQuotaError] = useState(null);
 
     const load = useCallback(async () => {
         const r = await api.get(`/jobs/${id}`);
@@ -32,11 +34,16 @@ export default function JobDetail() {
 
     const runMatch = async () => {
         setAnalyzing(true);
+        setQuotaError(null);
         try {
             const r = await api.post(`/jobs/${id}/match`);
             setMatch(r.data);
         } catch (err) {
-            console.error("match failed:", err);
+            if (err.response?.status === 403 && err.response.data?.detail?.code === "quota_exceeded") {
+                setQuotaError(err.response.data.detail);
+            } else {
+                console.error("match failed:", err);
+            }
         }
         setAnalyzing(false);
     };
@@ -66,6 +73,7 @@ export default function JobDetail() {
 
     return (
         <div className="px-8 py-8 max-w-6xl mx-auto" data-testid="job-detail-page">
+            <UsageBanner context="job-detail" />
             <Link to="/jobs" className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-100 mb-6" data-testid="back-to-jobs">
                 <ArrowLeft size={14} /> All jobs
             </Link>
@@ -109,6 +117,25 @@ export default function JobDetail() {
                                 </button>
                             )}
                         </div>
+
+                        {quotaError && (
+                            <div className="mb-4 p-4 rounded-lg bg-orange-500/10 border border-orange-500/30" data-testid="quota-error">
+                                <div className="flex items-start gap-3">
+                                    <Warning size={18} weight="fill" color="#FF5C00" className="mt-0.5 flex-shrink-0" />
+                                    <div className="flex-1">
+                                        <div className="font-display font-bold text-base tracking-tight">Out of free matches</div>
+                                        <div className="text-sm text-zinc-400 mt-1">{quotaError.message}</div>
+                                    </div>
+                                    <Link
+                                        to="/pricing"
+                                        data-testid="quota-upgrade-link"
+                                        className="bg-zinc-50 text-black hover:bg-zinc-200 transition-colors rounded-lg px-4 py-2 text-sm font-medium flex-shrink-0"
+                                    >
+                                        Upgrade →
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
 
                         {!match ? (
                             <div className="text-zinc-500 text-sm">

@@ -156,6 +156,25 @@ async def check_status(
     }
 
 
+@router.post("/cancel")
+async def cancel_subscription(user=Depends(get_current_user)):
+    """Downgrade user to Free immediately. (No Stripe sub to cancel — we charge one-time per 30 days.)"""
+    current_plan = user.get("plan") or "free"
+    if current_plan == "free":
+        return {"ok": True, "plan": "free", "message": "Already on Free plan."}
+
+    await users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {
+            "plan": "free",
+            "plan_expires_at": None,
+            "cancelled_at": datetime.now(timezone.utc).isoformat(),
+            "previous_plan": current_plan,
+        }},
+    )
+    return {"ok": True, "plan": "free", "message": f"Downgraded from {current_plan} to free. Thanks for trying Career OS."}
+
+
 # Webhook endpoint (Stripe sends here)
 webhook_router = APIRouter(tags=["billing"])
 

@@ -2,12 +2,14 @@ import { useEffect, useState, useCallback } from "react";
 import { api } from "../lib/api";
 import { Link } from "react-router-dom";
 import { MagnifyingGlass, MapPin, Briefcase, ArrowRight } from "@phosphor-icons/react";
+import UsageBanner from "../components/UsageBanner";
 
 export default function Jobs() {
     const [jobs, setJobs] = useState([]);
     const [q, setQ] = useState("");
     const [remoteOnly, setRemoteOnly] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [ingesting, setIngesting] = useState(false);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -20,12 +22,24 @@ export default function Jobs() {
         setLoading(false);
     }, [q, remoteOnly]);
 
+    const ingest = async () => {
+        setIngesting(true);
+        try {
+            await api.post("/jobs/ingest", { query: q || "engineering", limit: 25 });
+            await load();
+        } catch (err) {
+            console.error("ingest failed:", err);
+        }
+        setIngesting(false);
+    };
+
     useEffect(() => {
         load();
     }, [remoteOnly, load]);
 
     return (
         <div className="px-8 py-8 max-w-7xl mx-auto" data-testid="jobs-page">
+            <UsageBanner context="jobs" />
             <div className="flex items-end justify-between mb-6 flex-wrap gap-4">
                 <div>
                     <div className="overline">Jobs</div>
@@ -64,6 +78,14 @@ export default function Jobs() {
                 >
                     Search
                 </button>
+                <button
+                    onClick={ingest}
+                    disabled={ingesting}
+                    data-testid="jobs-ingest-btn"
+                    className="bg-blue-600/10 text-blue-400 border border-blue-500/20 hover:bg-blue-600/20 transition-colors rounded-lg px-4 py-2 text-sm disabled:opacity-50"
+                >
+                    {ingesting ? "Pulling…" : "Pull fresh jobs"}
+                </button>
             </div>
 
             {loading ? (
@@ -79,7 +101,14 @@ export default function Jobs() {
                         >
                             <div className="flex items-start justify-between gap-3 mb-3">
                                 <div>
-                                    <div className="text-[10px] font-mono-ui uppercase tracking-widest text-zinc-500">{j.company}</div>
+                                    <div className="text-[10px] font-mono-ui uppercase tracking-widest text-zinc-500 flex items-center gap-2">
+                                        {j.company}
+                                        {j.source && j.source !== "mock" && (
+                                            <span className="px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded text-[9px]" data-testid={`source-badge-${j.source}`}>
+                                                live · {j.source}
+                                            </span>
+                                        )}
+                                    </div>
                                     <div className="font-display font-bold text-xl mt-1 leading-tight tracking-tight">{j.title}</div>
                                 </div>
                                 <div className="text-right">

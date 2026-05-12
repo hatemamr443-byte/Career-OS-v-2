@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
+import UsageBanner from "../components/UsageBanner";
 
 export default function Insights() {
     const [data, setData] = useState(null);
@@ -22,6 +23,7 @@ export default function Insights() {
 
     return (
         <div className="px-8 py-8 max-w-6xl mx-auto" data-testid="insights-page">
+            <UsageBanner context="insights" />
             <div className="overline">Performance Layer</div>
             <h1 className="font-display font-black text-4xl mt-2 mb-8 tracking-tight">Career Insights</h1>
 
