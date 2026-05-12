@@ -6,7 +6,7 @@ from db import jobs, applications, profiles, decisions
 from models import new_id, Application
 from auth import get_current_user
 from llm_service import llm_call, parse_json_loose
-from job_sources import ingest_remotive
+from job_sources import ingest_remotive, ingest_all
 from quota import (
     get_effective_plan,
     get_match_usage,
@@ -169,15 +169,18 @@ async def my_usage(user=Depends(get_current_user)):
 
 @router.post("/jobs/ingest")
 async def ingest_jobs(payload: dict = None, user=Depends(get_current_user)):
-    """Pull real remote jobs from Remotive into the DB. Deduped by source_url."""
+    """Pull real jobs from all configured sources (Adzuna pt+gb, Jooble, Remotive) with dedupe.
+    Pass {"source": "remotive"} for legacy single-source behavior."""
     payload = payload or {}
     query = (payload.get("query") or "").strip()
-    limit = min(int(payload.get("limit") or 30), 50)
+    limit = min(int(payload.get("limit") or 25), 50)
+    source = (payload.get("source") or "all").lower()
     try:
-        result = await ingest_remotive(query=query, limit=limit)
+        if source == "remotive":
+            return await ingest_remotive(query=query, limit=limit)
+        return await ingest_all(query=query, limit_per_source=limit)
     except Exception as ex:
         raise HTTPException(502, f"Job ingest failed: {ex}")
-    return result
 
 
 

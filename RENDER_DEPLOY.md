@@ -51,6 +51,10 @@ In the Emergent dashboard click **Save to GitHub** (top-right). Render deploys f
    - `CORS_ORIGINS` → your future frontend URL, e.g. `https://career-os-web.onrender.com`
    - `EMERGENT_LLM_KEY` → copy from `/app/backend/.env` or your Emergent profile
    - `STRIPE_API_KEY` → keep `sk_test_emergent` for sandbox, or paste your own `sk_live_...`
+   - `ADZUNA_APP_ID` + `ADZUNA_APP_KEY` → register at https://developer.adzuna.com (free, 1000 calls/mo)
+   - `ADZUNA_COUNTRIES` → comma-separated, default `es,gb`. **Portugal not supported by Adzuna** — use `es` for Iberian market.
+   - `JOOBLE_API_KEY` → register at https://jooble.org/api/about
+   - `JOOBLE_LOCATION` → default `Lisbon`
 4. Deploy. Copy the assigned URL — you'll need it for the frontend, e.g. `https://career-os-api.onrender.com`
 
 ## 4. Deploy the frontend (Render Static Site)

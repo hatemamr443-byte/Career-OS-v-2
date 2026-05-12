@@ -10,6 +10,7 @@ export default function Jobs() {
     const [remoteOnly, setRemoteOnly] = useState(false);
     const [loading, setLoading] = useState(true);
     const [ingesting, setIngesting] = useState(false);
+    const [ingestResult, setIngestResult] = useState(null);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -24,11 +25,14 @@ export default function Jobs() {
 
     const ingest = async () => {
         setIngesting(true);
+        setIngestResult(null);
         try {
-            await api.post("/jobs/ingest", { query: q || "engineering", limit: 25 });
+            const r = await api.post("/jobs/ingest", { query: q || "engineering", limit: 15 });
+            setIngestResult(r.data);
             await load();
         } catch (err) {
             console.error("ingest failed:", err);
+            setIngestResult({ error: err.response?.data?.detail || "Ingest failed" });
         }
         setIngesting(false);
     };
@@ -87,6 +91,19 @@ export default function Jobs() {
                     {ingesting ? "Pulling…" : "Pull fresh jobs"}
                 </button>
             </div>
+
+            {ingestResult && !ingestResult.error && ingestResult.by_source && (
+                <div className="mb-6 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-sm" data-testid="ingest-result">
+                    <span className="font-mono-ui text-emerald-400">+{ingestResult.total_inserted}</span>
+                    <span className="text-zinc-400 ml-2">new jobs from </span>
+                    {Object.entries(ingestResult.by_source).map(([src, stats], i, arr) => (
+                        <span key={src} className="text-zinc-300">
+                            {src.replace("_", " ")} <span className="text-zinc-500 font-mono-ui">({stats.inserted}/{stats.fetched})</span>
+                            {i < arr.length - 1 ? ", " : ""}
+                        </span>
+                    ))}
+                </div>
+            )}
 
             {loading ? (
                 <div className="text-zinc-500 text-sm">Scanning the market…</div>
