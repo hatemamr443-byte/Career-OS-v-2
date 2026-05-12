@@ -19,7 +19,7 @@ from emailer import send_email, render_daily_digest
 
 log = logging.getLogger("daily_digest")
 
-DASHBOARD_URL_FALLBACK = "https://job-agent-ai-6.preview.emergentagent.com"
+DASHBOARD_URL_FALLBACK = os.environ.get("DASHBOARD_URL", "http://localhost:3000")
 
 
 def _quick_score(cv_skills: list, job_skills: list) -> int:

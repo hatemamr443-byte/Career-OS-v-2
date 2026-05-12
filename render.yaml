@@ -41,6 +41,8 @@ services:
         value: onboarding@resend.dev
       - key: CRON_TOKEN
         sync: false
+      - key: DASHBOARD_URL
+        sync: false        # paste your frontend Render URL once known
 
   # ── Frontend: React CRA Static Site ──
   - type: web
