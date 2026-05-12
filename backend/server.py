@@ -16,6 +16,7 @@ from routes_gamification import router as gam_router
 from routes_insights import router as insights_router
 from routes_profile import router as profile_router
 from routes_billing import router as billing_router, webhook_router as billing_webhook
+from routes_notifications import router as notifications_router
 from seed import seed_jobs_if_empty, seed_user_emails, seed_user_profile
 
 app = FastAPI(title="AI Career OS")
@@ -28,6 +29,7 @@ app.include_router(insights_router)
 app.include_router(profile_router)
 app.include_router(billing_router)
 app.include_router(billing_webhook)
+app.include_router(notifications_router)
 
 
 @app.get("/api/")

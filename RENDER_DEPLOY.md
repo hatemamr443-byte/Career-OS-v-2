@@ -55,6 +55,9 @@ In the Emergent dashboard click **Save to GitHub** (top-right). Render deploys f
    - `ADZUNA_COUNTRIES` → comma-separated, default `es,gb`. **Portugal not supported by Adzuna** — use `es` for Iberian market.
    - `JOOBLE_API_KEY` → register at https://jooble.org/api/about
    - `JOOBLE_LOCATION` → default `Lisbon`
+   - `RESEND_API_KEY` → register at https://resend.com (free 100/day)
+   - `SENDER_EMAIL` → default `onboarding@resend.dev`. Use your verified domain in production.
+   - `CRON_TOKEN` → random string. Used to auth the daily-digest cron endpoint.
 4. Deploy. Copy the assigned URL — you'll need it for the frontend, e.g. `https://career-os-api.onrender.com`
 
 ## 4. Deploy the frontend (Render Static Site)
@@ -87,6 +90,16 @@ Once live:
 2. URL: `https://career-os-api.onrender.com/api/webhook/stripe`
 3. Events: `checkout.session.completed`, `payment_intent.succeeded`
 4. Copy the signing secret if you swap to a real Stripe key (Emergent proxy handles signatures for `sk_test_emergent`).
+
+## 6b. Daily digest cron (free external cron)
+
+Once live, register at https://cron-job.org (free) and add a job:
+- URL: `https://career-os-api.onrender.com/api/internal/run-daily-digest`
+- Method: `POST`
+- Schedule: daily at 09:00 in your target timezone
+- Headers: `X-Cron-Token: <whatever you set in CRON_TOKEN env>`
+
+Render's free tier sleeps after 15min — the cron POST wakes it up. Acceptable for a daily job.
 
 ## 7. Google OAuth — ⚠️ MUST READ
 
