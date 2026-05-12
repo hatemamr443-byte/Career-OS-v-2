@@ -1,45 +1,59 @@
 # AI Career OS — PRD
 
 ## Original Problem Statement
-Build a full-stack AI-powered platform that acts as a personal career assistant and decision-making system. Not a job board — a decision-driven AI system that decides, recommends, tracks, and improves the user's job search strategy.
+Build a full-stack AI-powered career decision system. Not a job board — an AI agent that decides, recommends, tracks, and learns.
 
-## User Choices (Feb 2026)
+## User Choices
 - **Auth**: Emergent Google OAuth + JWT-ready abstraction
-- **LLM**: Multi-model router — Claude Sonnet 4.5 (reasoning), Gemini 3 Flash (fast/bulk)
-- **Jobs**: Hybrid — mock dataset + manual entry, pluggable JobSource
-- **DB**: MongoDB (vector matching abstracted for future Pinecone/Postgres)
-- **Email**: Mock inbox with full AI pipeline
-- **Billing**: Stripe via Emergent proxy (sk_test_emergent) — Pro $19 / Team $49 / Free
+- **LLM**: Claude Sonnet 4.5 (reasoning) + Gemini 3 Flash (fast/bulk)
+- **DB**: MongoDB
+- **Billing**: Stripe (Pro $19 / Team $49 / Free)
+- **Job source**: Mock seed + Remotive real API (Phase 2: Playwright connectors)
 
-## Implemented (through May 2026)
-- ✅ All v0.1 MVP features (Decision Engine, Lifecycle, Email AI, Missions, XP/Streak, Coach, Insights, Career Map, Profile)
-- ✅ Marketing landing page at `/` (logged-out) with hero + features + flow + CTA
-- ✅ Pricing page at `/pricing` (public) with 3 tiers
-- ✅ Stripe checkout integration via emergentintegrations
-- ✅ `payment_transactions` collection with idempotent plan activation
-- ✅ Webhook handler at `/api/webhook/stripe` (source of truth for plan activation)
-- ✅ Polling endpoint `/api/billing/status/{session_id}` with graceful fallback to DB state (Emergent Stripe proxy doesn't support `retrieve`)
-- ✅ Billing management page at `/billing` (logged-in) + sidebar nav
-- ✅ User model extended with `plan` and `plan_expires_at` fields
+## Implemented (through Jun 2026)
+### v0.1 — Core MVP
+- ✅ Emergent Google OAuth + AuthService abstraction
+- ✅ AI Decision Engine (Claude) — score, decision, reasoning, strengths, gaps
+- ✅ Application lifecycle tracker (6 states + timeline)
+- ✅ Mock recruiter inbox with AI classification (Gemini Flash)
+- ✅ Daily AI-generated missions + XP/streak/level + AI Coach (Claude with context)
+- ✅ Insights: funnel, rates, rejection pattern detection
+- ✅ Career Map kanban
+- ✅ CV editor + Claude-powered text parsing
 
-## Backlog (P0 / P1 / P2)
-- P1: Real job source connectors (Indeed/LinkedIn via Playwright)
-- P1: Gmail OAuth ingestion (data contracts already match Gmail schema)
-- P1: Plan-gating — enforce free tier limit of 5 AI matches/month (currently unlimited)
-- P1: Customer portal — let users cancel subscription from the Billing page
-- P1: Strategy Switching Engine — auto-detect low conversion + suggest pivots
-- P1: Decision Replay system — record outcomes vs predictions, learn over time
-- P2: Embeddings-based vector search (currently skill-overlap heuristic)
-- P2: Email digest via Resend (weekly summary)
-- P2: PDF CV upload (currently text paste only)
-- P2: GDPR data export + deletion endpoint
+### v0.2 — SaaS readiness
+- ✅ Marketing landing page at `/` + Pricing page at `/pricing`
+- ✅ Stripe checkout (one-time monthly charge) — Pro $19 / Team $49
+- ✅ Webhook handler — source of truth for plan activation
+- ✅ Billing management page + sidebar nav
 
-## Known Limitations
-- **Stripe `retrieve` not supported by Emergent proxy** — polling endpoint gracefully reports DB state; webhook is source of truth for plan activation. Users completing real payment have plan activated within seconds via webhook.
-- Job + email data is MOCK (10 jobs, 5 emails per user) — clearly labeled `source: "mock"`.
+### v0.3 — Productization
+- ✅ **Free-tier gating**: 5 AI matches/month for free; cached results don't count; Pro/Team unlimited
+- ✅ **Usage banner** (`UsageBanner.jsx`) on Jobs/Insights/JobDetail/Billing — loss-aversion CTA
+- ✅ **Quota-exceeded error panel** on JobDetail with direct Upgrade link
+- ✅ **Subscription cancel/downgrade** — `/api/billing/cancel` + confirmation modal
+- ✅ **PDF CV upload** — pypdf extraction + Claude parsing (5MB limit, image-only PDF guard)
+- ✅ **Real job ingest** — `/api/jobs/ingest` pulls live remote jobs from Remotive public API, dedupes by `source_url`, auto-extracts skills + seniority
+- ✅ **Render deployment guide** at `/app/RENDER_DEPLOY.md` + `.env.example` for both services
+
+## Test Results (iteration 3)
+- Backend: **19/19 passing** (100%)
+- Frontend: **9/9 critical flows passing** (100%)
+- Known carryover (NOT a regression): `/api/billing/status` returns DB-cached state because Emergent Stripe proxy doesn't support `retrieve`. Webhook is source of truth.
+
+## Backlog (P1 / P2)
+- P1: Plan-aware feature gating beyond match limit (e.g., AI Coach memory only for Pro)
+- P1: Strategy Switching Engine — auto-pivot when interview rate drops
+- P1: Decision Replay — log predictions vs outcomes, fine-tune ranking over time
+- P2: Playwright connectors for Indeed/LinkedIn (Remotive covers remote jobs; geo-specific roles need scrapers)
+- P2: Gmail OAuth ingestion (data contracts already Gmail-shaped)
+- P2: Embeddings-based vector match (currently skill-overlap + Claude reasoning)
+- P2: Email digest via Resend
+- P2: GDPR data export/delete
 
 ## Test Credentials
 See `/app/memory/test_credentials.md` — Bearer `test_session_career_os` (user_testseed01).
 
 ## Deployment
-Ready for native Emergent deployment. `deployment_agent` returned PASS in iteration 1.
+- ✅ Native Emergent: ready (`deployment_agent` PASS in iteration 1)
+- ✅ Render: complete guide at `/app/RENDER_DEPLOY.md` — note OAuth host caveat
