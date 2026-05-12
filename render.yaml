@@ -1,0 +1,58 @@
+# Render Blueprint — pins build config so dashboard mis-clicks can't break the deploy.
+# Commit this file and from Render dashboard: New → Blueprint → connect repo → it reads this.
+#
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  # ── Backend: FastAPI ──
+  - type: web
+    name: career-os-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.10
+      - key: MONGO_URL
+        sync: false        # paste your Atlas connection string in dashboard
+      - key: DB_NAME
+        value: career_os
+      - key: CORS_ORIGINS
+        sync: false        # paste your frontend URL once known
+      - key: EMERGENT_LLM_KEY
+        sync: false
+      - key: STRIPE_API_KEY
+        value: sk_test_emergent
+      - key: ADZUNA_APP_ID
+        sync: false
+      - key: ADZUNA_APP_KEY
+        sync: false
+      - key: ADZUNA_COUNTRIES
+        value: es,gb
+      - key: JOOBLE_API_KEY
+        sync: false
+      - key: JOOBLE_LOCATION
+        value: Lisbon
+      - key: RESEND_API_KEY
+        sync: false
+      - key: SENDER_EMAIL
+        value: onboarding@resend.dev
+      - key: CRON_TOKEN
+        sync: false
+
+  # ── Frontend: React CRA Static Site ──
+  - type: web
+    name: career-os-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: yarn install --frozen-lockfile && yarn build
+    staticPublishPath: ./build
+    envVars:
+      - key: REACT_APP_BACKEND_URL
+        sync: false        # paste backend Render URL once known
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
