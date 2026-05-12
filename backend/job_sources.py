@@ -11,6 +11,7 @@ Dedupe key: SHA1(title|company|location|source_url) stored as content_hash.
 """
 import os
 import re
+import asyncio
 import hashlib
 import httpx
 from datetime import datetime, timezone
