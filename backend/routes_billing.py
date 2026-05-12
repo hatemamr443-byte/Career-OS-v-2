@@ -1,5 +1,6 @@
 """Stripe billing: Pro / Team monthly plans (one-time charge, 30 days access)."""
 import os
+import stripe as stripe_sdk
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request
 from emergentintegrations.payments.stripe.checkout import (
@@ -113,32 +114,37 @@ async def check_status(
     if not txn:
         raise HTTPException(404, "Transaction not found")
 
-    stripe = _stripe(http_request)
-    status_resp = await stripe.get_checkout_status(session_id)
+    # Try Stripe retrieve. Emergent Stripe proxy may not support it; fall back to DB state
+    # (which the webhook keeps current). Webhook is the source of truth either way.
+    payment_status = txn.get("payment_status", "pending")
+    overall_status = txn.get("status", "initiated")
 
-    # Update transaction — idempotent (don't double-apply)
+    _ = _stripe(http_request)
+    try:
+        session = stripe_sdk.checkout.Session.retrieve(session_id)
+        payment_status = getattr(session, "payment_status", None) or payment_status
+        overall_status = getattr(session, "status", None) or overall_status
+        await payment_transactions.update_one(
+            {"session_id": session_id},
+            {"$set": {
+                "payment_status": payment_status,
+                "status": overall_status,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+    except Exception:
+        # Fall back to DB state; webhook will update it independently
+        pass
+
+    # Activate plan only if first-time success (idempotent)
     already_paid = txn.get("payment_status") == "paid"
-    payment_status = status_resp.payment_status
-    overall_status = status_resp.status
-
-    update = {
-        "payment_status": payment_status,
-        "status": overall_status,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }
-    await payment_transactions.update_one({"session_id": session_id}, {"$set": update})
-
-    # Activate plan only if first-time success
     if payment_status == "paid" and not already_paid:
         plan_id = txn["plan_id"]
         days = PLANS[plan_id]["days"]
         expires_at = datetime.now(timezone.utc) + timedelta(days=days)
         await users.update_one(
             {"user_id": user["user_id"]},
-            {"$set": {
-                "plan": plan_id,
-                "plan_expires_at": expires_at.isoformat(),
-            }},
+            {"$set": {"plan": plan_id, "plan_expires_at": expires_at.isoformat()}},
         )
 
     return {

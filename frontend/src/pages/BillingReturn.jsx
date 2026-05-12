@@ -15,7 +15,7 @@ export default function BillingReturn() {
             setState({ status: "missing", payment_status: "" });
             return;
         }
-        if (attempts.current >= 8) {
+        if (attempts.current >= 15) {
             setState((s) => ({ ...s, status: "timeout" }));
             return;
         }

@@ -34,6 +34,7 @@ export default function Pricing() {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [busy, setBusy] = useState(null);
+    const [error, setError] = useState(null);
     const [current, setCurrent] = useState("free");
 
     useEffect(() => {
@@ -53,6 +54,7 @@ export default function Pricing() {
             return;
         }
         setBusy(plan_id);
+        setError(null);
         try {
             const r = await api.post("/billing/checkout", {
                 plan_id,
@@ -61,6 +63,7 @@ export default function Pricing() {
             window.location.href = r.data.url;
         } catch (err) {
             console.error("checkout failed:", err);
+            setError("Checkout failed. Please try again.");
             setBusy(null);
         }
     };
@@ -202,6 +205,11 @@ export default function Pricing() {
                 <div className="mt-12 text-center text-xs text-zinc-500">
                     Test mode. Use Stripe test card <span className="font-mono-ui">4242 4242 4242 4242</span> with any future date and any CVC.
                 </div>
+                {error && (
+                    <div className="mt-4 max-w-md mx-auto p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm text-center" data-testid="checkout-error">
+                        {error}
+                    </div>
+                )}
             </main>
         </div>
     );
