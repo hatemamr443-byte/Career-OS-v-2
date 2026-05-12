@@ -2,7 +2,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
-import { House, Briefcase, EnvelopeSimple, ChartLine, GraphIcon, User as UserIcon, SignOut, Sparkle, FlameIcon } from "@phosphor-icons/react";
+import { House, Briefcase, EnvelopeSimple, ChartLine, GraphIcon, User as UserIcon, SignOut, Sparkle, FlameIcon, CreditCard } from "@phosphor-icons/react";
 import AICoachDock from "./AICoachDock";
 
 const NAV = [
@@ -12,6 +12,7 @@ const NAV = [
     { to: "/insights", label: "Insights", icon: ChartLine },
     { to: "/career-map", label: "Career Map", icon: GraphIcon },
     { to: "/profile", label: "Profile", icon: UserIcon },
+    { to: "/billing", label: "Billing", icon: CreditCard },
 ];
 
 export default function Layout() {

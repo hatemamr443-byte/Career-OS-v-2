@@ -184,3 +184,85 @@ def test_profile_get_update():
     assert r2.status_code == 200
     p2 = requests.get(f"{BASE_URL}/api/profile", headers=HEADERS, timeout=15).json()
     assert p2.get("headline") == "Updated headline TEST"
+
+
+# Billing
+def test_billing_plans():
+    r = requests.get(f"{BASE_URL}/api/billing/plans", timeout=15)
+    assert r.status_code == 200
+    data = r.json()
+    plans = {p["id"]: p for p in data["plans"]}
+    assert "pro" in plans and "team" in plans
+    assert plans["pro"]["amount"] == 19.00 and plans["pro"]["currency"] == "usd"
+    assert plans["team"]["amount"] == 49.00 and plans["team"]["currency"] == "usd"
+
+
+def test_billing_me():
+    r = requests.get(f"{BASE_URL}/api/billing/me", headers=HEADERS, timeout=15)
+    assert r.status_code == 200
+    data = r.json()
+    assert "plan" in data
+    assert data["plan"] in ["free", "pro", "team"]
+
+
+def test_billing_me_unauth():
+    r = requests.get(f"{BASE_URL}/api/billing/me", timeout=15)
+    assert r.status_code == 401
+
+
+def test_billing_checkout_invalid_plan():
+    r = requests.post(f"{BASE_URL}/api/billing/checkout",
+                      json={"plan_id": "invalid", "origin_url": "https://example.com"},
+                      headers=HEADERS, timeout=15)
+    assert r.status_code == 400
+
+
+def test_billing_checkout_missing_origin():
+    r = requests.post(f"{BASE_URL}/api/billing/checkout",
+                      json={"plan_id": "pro"},
+                      headers=HEADERS, timeout=15)
+    assert r.status_code == 400
+
+
+def test_billing_checkout_creates_session():
+    r = requests.post(f"{BASE_URL}/api/billing/checkout",
+                      json={"plan_id": "pro", "origin_url": "https://example.com"},
+                      headers=HEADERS, timeout=30)
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert "url" in data and "session_id" in data
+    assert data["url"].startswith("https://")
+    # save for next test
+    global _LAST_SESSION_ID
+    _LAST_SESSION_ID = data["session_id"]
+
+
+_LAST_SESSION_ID = None
+
+
+def test_billing_status_endpoint():
+    if not _LAST_SESSION_ID:
+        # Create one fresh
+        r = requests.post(f"{BASE_URL}/api/billing/checkout",
+                          json={"plan_id": "pro", "origin_url": "https://example.com"},
+                          headers=HEADERS, timeout=30)
+        assert r.status_code == 200
+        sid = r.json()["session_id"]
+    else:
+        sid = _LAST_SESSION_ID
+    r = requests.get(f"{BASE_URL}/api/billing/status/{sid}", headers=HEADERS, timeout=20)
+    assert r.status_code == 200
+    data = r.json()
+    assert "payment_status" in data
+
+
+def test_billing_status_not_found():
+    r = requests.get(f"{BASE_URL}/api/billing/status/sess_nonexistent_xyz", headers=HEADERS, timeout=15)
+    assert r.status_code == 404
+
+
+def test_stripe_webhook_endpoint_exists():
+    # Sending without signature should produce 400, not 404
+    r = requests.post(f"{BASE_URL}/api/webhook/stripe", data=b"{}", timeout=15)
+    assert r.status_code != 404
+    assert r.status_code in (400, 422, 500)
