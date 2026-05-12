@@ -1,29 +1,33 @@
+# ─── Career OS — Production runtime dependencies only ───
+# Slim list — every package below is imported in the codebase.
+# Build memory: <200 MB. Build time on Render: ~2 min.
+
+# ── Web framework ──
 fastapi==0.110.1
-uvicorn==0.25.0
-boto3>=1.34.129
-requests-oauthlib>=2.0.0
-cryptography>=42.0.8
-python-dotenv>=1.0.1
-pymongo==4.5.0
+uvicorn[standard]==0.25.0
+python-multipart>=0.0.9     # required by FastAPI for multipart/form-data (PDF upload)
 pydantic>=2.6.4
-email-validator>=2.2.0
-pyjwt>=2.10.1
-bcrypt==4.1.3
-passlib>=1.7.4
-tzdata>=2024.2
+
+# ── Configuration ──
+python-dotenv>=1.0.1
+
+# ── HTTP client (async) ──
+httpx>=0.27.0
+
+# ── Database (Mongo) ──
 motor==3.3.1
-pytest>=8.0.0
-black>=24.1.1
-isort>=5.13.2
-flake8>=7.0.0
-mypy>=1.8.0
-python-jose>=3.3.0
-requests>=2.31.0
-pandas>=2.2.0
-numpy>=1.26.0
-python-multipart>=0.0.9
-jq>=1.6.0
-typer>=0.9.0
-emergentintegrations==0.1.0
-pypdf==6.11.0
+pymongo==4.5.0              # motor's underlying driver — version-pinned to match
+
+# ── PDF parsing (CV upload) ──
+pypdf>=4.3.0
+
+# ── Email ──
 resend>=2.0.0
+
+# ── Payments ──
+stripe>=8.0.0
+
+# ── Emergent LLM (Claude + Gemini + OpenAI via Universal Key) ──
+# CRITICAL: This package is not on public PyPI. Build command MUST include
+# --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/
+emergentintegrations==0.1.0

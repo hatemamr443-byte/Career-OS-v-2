@@ -38,13 +38,22 @@ In the Emergent dashboard click **Save to GitHub** (top-right). Render deploys f
    - **Environment**: `Python 3`
    - **Build Command**:
      ```
-     pip install -r requirements.txt --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/
+     pip install --upgrade pip && pip install -r requirements.txt --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/
      ```
-     (the extra index URL is required for the `emergentintegrations` library)
+     (the extra index URL is required for the `emergentintegrations` library — public CDN, no auth)
    - **Start Command**:
      ```
      uvicorn server:app --host 0.0.0.0 --port $PORT
      ```
+   - **Python version**: a `runtime.txt` file ships in `/backend` pinning Python to `3.11.10`. Render's default 3.13 breaks wheels for several deps. Don't remove this file.
+
+   ### If you see "Exited with status 1" at build time
+   The CloudFront URL is fine. The culprit is almost always one of these:
+   - **Bloated `requirements.txt`**: dev tools (`black`, `pytest`, `mypy`), heavy packages with native deps (`pandas`, `jq`), or unused libs (`boto3`, `cryptography`) blow up Render free tier's 512 MB build memory. The current `requirements.txt` is intentionally slim — every package is imported in the codebase. If you re-add anything, scan first.
+   - **Python version**: emergentintegrations is built for 3.11. The `runtime.txt` pin handles this.
+   - **Missing `--extra-index-url`** in build command — emergentintegrations is on a private CDN, not PyPI.
+
+   The CloudFront index is at https://d33sy5i8bnduwe.cloudfront.net/simple/ — public, no token, returns 200 from any IP.
 3. Environment Variables (from `backend/.env.example`):
    - `MONGO_URL` → your Atlas connection string
    - `DB_NAME` → `career_os`
