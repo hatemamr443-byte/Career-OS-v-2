@@ -36,7 +36,16 @@ Build a full-stack AI-powered career decision system. Not a job board — an AI 
 - ✅ **Real job ingest** — `/api/jobs/ingest` pulls live remote jobs from Remotive public API, dedupes by `source_url`, auto-extracts skills + seniority
 - ✅ **Render deployment guide** at `/app/RENDER_DEPLOY.md` + `.env.example` for both services
 
-## Test Results (iteration 3)
+### v0.4 — Multi-source job ingest (real production APIs)
+- ✅ **Adzuna connector** (`fetch_adzuna(country)`) — primary source. Configurable countries via `ADZUNA_COUNTRIES` env (default `es,gb`). Portugal not supported by Adzuna; Spain proxies Iberian market.
+- ✅ **Jooble connector** (`fetch_jooble(query, location)`) — secondary. Location configurable via `JOOBLE_LOCATION` env (default `Lisbon`).
+- ✅ **Remotive** kept as tertiary (remote-only).
+- ✅ `POST /api/jobs/ingest` now runs all 3 sources in priority order, returns per-source breakdown + errors. Legacy `{source:"remotive"}` flag preserves old behavior.
+- ✅ **Content-hash dedupe**: SHA1(title|company|location|source_url) — race-proof via MongoDB unique partial index `content_hash_unique`.
+- ✅ Unique indexes on startup: `jobs.content_hash`, `match_usage.user_id+month`, `payment_transactions.session_id`.
+- ✅ Frontend: ingest breakdown panel shows per-source counts, source badges on all real-job cards.
+
+## Test Results (iteration 4)
 - Backend: **19/19 passing** (100%)
 - Frontend: **9/9 critical flows passing** (100%)
 - Known carryover (NOT a regression): `/api/billing/status` returns DB-cached state because Emergent Stripe proxy doesn't support `retrieve`. Webhook is source of truth.

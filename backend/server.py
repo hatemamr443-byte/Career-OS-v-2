@@ -46,6 +46,20 @@ async def seed_for_user(user=Depends(get_current_user)):
 @app.on_event("startup")
 async def on_startup():
     await seed_jobs_if_empty()
+    # Ensure dedupe race-safety on jobs.content_hash (partial index — only docs that have the field)
+    try:
+        from db import jobs as jobs_col, db as mongo_db
+        await jobs_col.create_index(
+            "content_hash",
+            unique=True,
+            partialFilterExpression={"content_hash": {"$exists": True}},
+            name="content_hash_unique",
+        )
+        await mongo_db.match_usage.create_index([("user_id", 1), ("month", 1)], unique=True, name="usage_uq")
+        await mongo_db.payment_transactions.create_index("session_id", unique=True, name="session_uq")
+    except Exception as ex:
+        import logging
+        logging.warning("Index creation skipped: %s", ex)
 
 
 app.add_middleware(
