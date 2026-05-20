@@ -28,7 +28,7 @@ referrals            = mongo_db.referrals
 
 
 def _stripe(http_request: Request) -> StripeCheckout:
-    api_key = os.environ.get("STRIPE_API_KEY", "")
+    api_key = os.environ.get("STRIPE_SECRET_KEY", "")
     host_url = str(http_request.base_url).rstrip("/")
     webhook_url = f"{host_url}/api/webhook/stripe"
     return StripeCheckout(api_key=api_key, webhook_url=webhook_url)
@@ -387,7 +387,7 @@ webhook_router = APIRouter(tags=["billing"])
 async def stripe_webhook(request: Request):
     body = await request.body()
     sig = request.headers.get("Stripe-Signature", "")
-    api_key = os.environ.get("STRIPE_API_KEY", "")
+    api_key = os.environ.get("STRIPE_SECRET_KEY", "")
     host_url = str(request.base_url).rstrip("/")
     stripe = StripeCheckout(api_key=api_key, webhook_url=f"{host_url}/api/webhook/stripe")
     try:

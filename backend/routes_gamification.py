@@ -4,7 +4,8 @@ from datetime import datetime, timezone, date, timedelta
 from db import users, missions, applications, jobs, profiles, coach_messages
 from models import new_id
 from auth import get_current_user
-from llm_service import llm_call, parse_json_loose
+from llm_service import parse_json_loose
+from orchestrator import orchestrator
 
 router = APIRouter(prefix="/api", tags=["gamification"])
 
@@ -64,10 +65,12 @@ async def get_today_missions(user=Depends(get_current_user)):
         "Generate 4 missions tailored to this state. If user is new, focus on profile completion + first application."
     )
     try:
-        text = await llm_call(
+        text = await orchestrator.run(
+            user_id=user["user_id"],
+            feature="daily_missions",
             task="reasoning",
-            system=system,
-            user=context,
+            feature_prompt=system,
+            user_message=context,
             session_id=f"missions_{user['user_id']}_{today}",
         )
         data = parse_json_loose(text)
@@ -184,26 +187,24 @@ async def coach_chat(payload: dict, user=Depends(get_current_user)):
     apps = await applications.count_documents({"user_id": user["user_id"]})
     interviews = await applications.count_documents({"user_id": user["user_id"], "status": "interview"})
 
-    system = (
-        "You are an elite, no-fluff AI Career Coach. "
-        "Be direct, actionable, and warm. Keep responses under 150 words. "
-        "Use the user's career context. Suggest concrete next steps. "
-        "Never use emojis. Never use generic motivational fluff."
-    )
-    ctx = (
-        f"User: {user.get('name')}\n"
-        f"Headline: {(profile or {}).get('headline', 'Unknown')}\n"
-        f"Top skills: {', '.join((profile or {}).get('skills', [])[:6])}\n"
-        f"Applications: {apps}, Interviews: {interviews}\n"
-        f"Streak: {user.get('streak', 0)} days, Level: {user.get('level', 1)}\n\n"
-        f"User asks: {content}"
-    )
     try:
-        reply = await llm_call(
+        reply = await orchestrator.run(
+            user_id=user["user_id"],
+            feature="coach_chat",
             task="reasoning",
-            system=system,
-            user=ctx,
+            feature_prompt=(
+                "You are an elite, no-fluff AI Career Coach with full knowledge "
+                "of this user's career history. Be direct, actionable, and warm. "
+                "Keep responses under 150 words. Suggest concrete next steps. "
+                "Never use emojis. Never use generic motivational fluff."
+            ),
+            user_message=(
+                f"Applications: {apps}, Interviews: {interviews}\n"
+                f"Streak: {user.get('streak', 0)} days, Level: {user.get('level', 1)}\n\n"
+                f"User asks: {content}"
+            ),
             session_id=f"coach_{user['user_id']}",
+            context_depth="full",
         )
     except Exception as ex:
         reply = f"Coach is offline right now. Try again in a moment. ({type(ex).__name__})"
@@ -223,8 +224,11 @@ async def coach_chat(payload: dict, user=Depends(get_current_user)):
 # ─────────────────────────────────────────────
 
 async def _award_xp_direct(user_id: str, amount: int, reason: str):
-    """Award XP directly to a user from any route. Persists to xp_events collection."""
-    from db import xp_events
+    """Award XP directly to a user from any route. Delegates to the xp engine."""
+    from xp import award_xp
+    return await award_xp(user_id, reason, amount=amount)
+
+
 @router.get("/xp/history")
 async def xp_history(user=Depends(get_current_user), limit: int = 20):
     """Return recent XP events for the current user."""

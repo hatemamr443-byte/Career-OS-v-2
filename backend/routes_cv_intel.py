@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/cv", tags=["cv-intelligence"])
+router = APIRouter(prefix="/api/cv-intel", tags=["cv-intelligence"])
 
 
 async def _get_profile_and_job(user_id: str, job_id: str) -> tuple[dict, dict]:

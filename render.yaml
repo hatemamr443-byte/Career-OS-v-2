@@ -54,6 +54,12 @@ services:
         sync: false
       - key: JOOBLE_API_KEY
         sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
 
   # ── Frontend ── React / CRA + Craco Static Site ───────────
   - type: web

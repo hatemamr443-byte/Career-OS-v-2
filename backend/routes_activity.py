@@ -15,26 +15,8 @@ router = APIRouter(prefix="/api", tags=["activity"])
 # ACTIVITY FEED
 # ─────────────────────────────────────────────
 
-async def log_activity(
-    user_id: str,
-    event_type: str,
-    title: str,
-    description: str,
-    metadata: dict | None = None,
-):
-    """Write one activity event. Fire-and-forget from other routes."""
-    doc = {
-        "activity_id": new_id("act"),
-        "user_id": user_id,
-        "event_type": event_type,
-        "title": title,
-        "description": description,
-        "metadata": metadata or {},
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    await activity_logs.insert_one(doc)
-    doc.pop("_id", None)
-    return doc
+# Re-exported from activity.py for backwards compatibility
+from activity import log_activity  # noqa: F401
 
 
 @router.get("/insights/activity")
