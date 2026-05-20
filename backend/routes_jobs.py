@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from db import jobs, applications, profiles, decisions, bookmarks
 from models import new_id
 from auth import get_current_user
-from llm_service import llm_call, parse_json_loose
+from llm_service import parse_json_loose
 from job_sources import ingest_remotive, ingest_all
 from quota import (
     get_effective_plan,
@@ -120,30 +120,32 @@ async def compute_match(job_id: str, user=Depends(get_current_user)):
                 },
             )
 
-    system = (
-        "You are an elite career strategist AI. Given a candidate's CV and a job, "
-        "produce a structured match analysis. Be honest and decisive. "
-        "Return ONLY valid JSON, no prose. Schema: "
-        '{"score": int 0-100, "confidence": int 0-100, '
-        '"decision": "apply"|"consider"|"skip", '
+    feature_prompt = (
+        "Perform a structured match analysis between this candidate and job. "
+        "Use all career context and memory above to personalise the analysis. "
+        "Return ONLY valid JSON:\n"
+        '{"score": 0-100, "confidence": 0-100, '
+        '"decision": "apply|consider|skip", '
         '"reasoning": "2-3 sentence rationale", '
-        '"strengths": ["..."], "gaps": ["..."], '
-        '"expected_outcome": "what likely happens if they apply"}'
+        '"strengths": ["specific strength"], "gaps": ["specific gap"], '
+        '"expected_outcome": "realistic outcome if applied"}'
     )
     user_prompt = (
-        f"CANDIDATE CV:\n{profile['cv_text']}\n\n"
-        f"JOB:\nTitle: {job['title']}\nCompany: {job['company']}\n"
-        f"Seniority: {job['seniority']}\nLocation: {job['location']}\n"
-        f"Required skills: {', '.join(job.get('skills_required', []))}\n\n"
-        f"Description: {job['description']}\n\n"
-        "Output JSON only."
+        f"JOB: {job['title']} at {job['company']} ({job['seniority']}, {job['location']})\n"
+        f"Required skills: {', '.join(job.get('skills_required', []))}\n"
+        f"Description:\n{job.get('description', '')[:2000]}"
     )
     try:
-        text = await llm_call(
+        from orchestrator import orchestrator
+        text = await orchestrator.run(
+            user_id=user["user_id"],
+            feature="job_match",
             task="reasoning",
-            system=system,
-            user=user_prompt,
+            feature_prompt=feature_prompt,
+            user_message=user_prompt,
             session_id=f"match_{user['user_id']}_{job_id}",
+            publish_event="match_analyzed",
+            event_payload={"job_id": job_id, "title": job.get("title")},
         )
         data = parse_json_loose(text)
         if not data or "score" not in data:

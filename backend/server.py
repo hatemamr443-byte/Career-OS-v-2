@@ -1,6 +1,7 @@
 """Main FastAPI server for AI Career OS."""
 import logging
 import os
+from logging_config import configure_logging
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -23,6 +24,7 @@ from routes_jobs import router as jobs_router
 from routes_notifications import router as notifications_router
 from routes_onboarding import router as onboarding_router
 from routes_orchestrator import router as orchestrator_router
+from routes_admin import router as admin_router
 from routes_profile import router as profile_router
 from routes_salary import router as salary_router
 from seed import seed_jobs_if_empty, seed_user_emails, seed_user_profile
@@ -77,6 +79,7 @@ app.include_router(salary_router)
 app.include_router(gdpr_router)
 app.include_router(decision_router)
 app.include_router(orchestrator_router)
+app.include_router(admin_router)
 
 
 @app.get("/health")
@@ -230,4 +233,4 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+configure_logging()  # structured JSON in prod, coloured dev format locally
