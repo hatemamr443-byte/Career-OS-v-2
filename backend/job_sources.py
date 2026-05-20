@@ -254,7 +254,6 @@ async def fetch_remoteok(query: str = "", limit: int = 20) -> List[Dict[str, Any
                 if q_low and q_low not in title.lower() and q_low not in company.lower():
                     continue
                 tags = j.get("tags") or []
-                salary_text = j.get("salary") or ""
                 out.append(_normalize({
                     "title": title,
                     "company": company,

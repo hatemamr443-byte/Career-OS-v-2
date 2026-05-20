@@ -27,7 +27,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Any, Awaitable, Callable, DefaultDict
+from typing import Awaitable, Callable, DefaultDict
 from collections import defaultdict
 
 from db import db as mongo_db, career_events

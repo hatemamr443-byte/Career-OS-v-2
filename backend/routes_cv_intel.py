@@ -1,11 +1,9 @@
 """CV Intelligence — Tailoring, Cover Letter, ATS Score, Interview Prep."""
 from fastapi import APIRouter, Depends, HTTPException
-from db import profiles, jobs, applications
+from db import profiles, jobs
 from auth import get_current_user
 from llm_service import llm_call, parse_json_loose
 from activity import log_activity
-from models import new_id
-from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)

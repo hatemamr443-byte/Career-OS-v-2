@@ -1,8 +1,6 @@
 """Smart Onboarding — derives progress from real user state. No manual flags."""
 from fastapi import APIRouter, Depends
-from datetime import datetime, timezone
-from db import profiles, applications, users, onboarding as onboarding_col
-from models import new_id
+from db import profiles, applications, users
 from auth import get_current_user
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 from datetime import datetime, timezone
 from db import jobs, applications, profiles, decisions, bookmarks
-from models import new_id, Application
+from models import new_id
 from auth import get_current_user
 from llm_service import llm_call, parse_json_loose
 from job_sources import ingest_remotive, ingest_all

@@ -1,7 +1,6 @@
 """Notifications: daily digest toggle + manual trigger + cron endpoint."""
 import os
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
-from datetime import datetime, timezone
 from db import profiles
 from auth import get_current_user
 from daily_digest import run_daily_digest_for_user, run_daily_digest_all

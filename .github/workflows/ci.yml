@@ -11,8 +11,6 @@ on:
     branches: [main]
 
 jobs:
-
-  # ── Backend ───────────────────────────────────────────────
   backend:
     name: Backend (Python)
     runs-on: ubuntu-latest
@@ -26,33 +24,45 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+    env:
+      MONGO_URL: mongodb://localhost:27017
+      DB_NAME: career_os
+      EMERGENT_LLM_KEY: test-key-ci
+      ENVIRONMENT: test
+      CRON_TOKEN: ci-token
+      TEST_SESSION_TOKEN: test_session_career_os
+      REACT_APP_BACKEND_URL: http://127.0.0.1:8001
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: pip
+          cache-dependency-path: backend/requirements.txt
 
       - name: Install dependencies
-        run: |
-          pip install --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/ \
-            -r backend/requirements.txt
-          pip install ruff pytest pytest-asyncio
+        run: pip install --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/ -r backend/requirements.txt ruff pytest pytest-asyncio
 
       - name: Lint (ruff)
-        run: ruff check backend/ --ignore E501,E402
+        run: ruff check backend
+
+      - name: Start backend
+        working-directory: backend
+        run: python -m uvicorn server:app --host 127.0.0.1 --port 8001
+
+      - name: Wait for backend
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8001/health && exit 0
+            sleep 2
+          done
+          echo "Backend failed to start"
+          exit 1
 
       - name: Run tests
-        env:
-          MONGO_URL: "mongodb://localhost:27017"
-          DB_NAME: "test_career_os"
-          EMERGENT_LLM_KEY: "test-key-ci"
-          ENVIRONMENT: "test"
-          CRON_TOKEN: "ci-token"
-        run: pytest backend/tests/ -v --tb=short || true
+        run: pytest -vv backend/tests --tb=short
 
-  # ── Frontend ──────────────────────────────────────────────
   frontend:
     name: Frontend (React)
     runs-on: ubuntu-latest
@@ -61,25 +71,22 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: yarn
-          cache-dependency-path: frontend/yarn.lock
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: |
-          cd frontend
-          yarn install --network-timeout 600000 --ignore-optional --frozen-lockfile
+        working-directory: frontend
+        run: npm ci
 
       - name: Build
+        working-directory: frontend
         env:
-          REACT_APP_BACKEND_URL: "http://localhost:8001"
+          REACT_APP_BACKEND_URL: http://127.0.0.1:8001
           ENABLE_HEALTH_CHECK: "false"
-          CI: "false"
-        run: |
-          cd frontend
-          yarn build
+          CI: "true"
+        run: npm run build
 
-  # ── Secrets scan ─────────────────────────────────────────
   secrets-scan:
     name: Secrets Scan
     runs-on: ubuntu-latest

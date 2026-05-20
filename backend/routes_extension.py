@@ -1,10 +1,10 @@
 """Chrome Extension API — receives jobs saved from browser."""
 from fastapi import APIRouter, Depends, HTTPException
 from datetime import datetime, timezone
-from db import jobs as jobs_col, applications, profiles
+from db import jobs as jobs_col, applications
 from models import new_id
 from auth import get_current_user
-from job_sources import _content_hash, _normalize, _extract_skills, _guess_seniority
+from job_sources import _content_hash, _extract_skills, _guess_seniority
 from activity import log_activity
 from xp import award_xp
 import logging

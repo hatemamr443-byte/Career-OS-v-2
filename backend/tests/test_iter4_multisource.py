@@ -1,6 +1,5 @@
 """Iteration 4: multi-source job ingest (Adzuna ES+GB, Jooble, Remotive) with dedupe."""
 import os
-import pytest
 import requests
 from pymongo import MongoClient
 

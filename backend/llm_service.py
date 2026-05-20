@@ -8,7 +8,11 @@ task="structured" → GPT-4         (guaranteed JSON schema)
 
 Circuit breaker: per-provider sliding-window (10 calls, >50% errors → open for 60s).
 """
-import os, json, re, time, logging
+import json
+import logging
+import os
+import re
+import time
 from collections import deque
 from typing import Literal
 
@@ -74,7 +78,8 @@ _cb = _CircuitBreaker()
 async def _call_emergent(task, system, user, session_id):
     from emergentintegrations.llm.chat import LlmChat, UserMessage
     key = os.environ.get("EMERGENT_LLM_KEY", "")
-    if not key: raise ValueError("EMERGENT_LLM_KEY not set")
+    if not key:
+        raise ValueError("EMERGENT_LLM_KEY not set")
     provider, model = ROUTING[task]["emergent"]
     chat = LlmChat(api_key=key, session_id=session_id,
                    system_message=system).with_model(provider, model)
@@ -84,34 +89,45 @@ async def _call_emergent(task, system, user, session_id):
 
 async def _call_anthropic(system, user):
     import anthropic
+
     key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not key: raise ValueError("ANTHROPIC_API_KEY not set")
+    if not key:
+        raise ValueError("ANTHROPIC_API_KEY not set")
     client = anthropic.AsyncAnthropic(api_key=key)
     msg = await client.messages.create(
-        model="claude-sonnet-4-5-20250929", max_tokens=4096,
-        system=system, messages=[{"role": "user", "content": user}])
+        model="claude-sonnet-4-5-20250929",
+        max_tokens=4096,
+        system=system,
+        messages=[{"role": "user", "content": user}],
+    )
     return msg.content[0].text
 
 
 async def _call_openai(system, user):
     from openai import AsyncOpenAI
+
     key = os.environ.get("OPENAI_API_KEY", "")
-    if not key: raise ValueError("OPENAI_API_KEY not set")
+    if not key:
+        raise ValueError("OPENAI_API_KEY not set")
     client = AsyncOpenAI(api_key=key)
-    # Use gpt-4o to match Emergent's gpt-5.1 capability tier (not gpt-4o-mini)
     resp = await client.chat.completions.create(
         model="gpt-4o",
-        messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-        max_tokens=4096)
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        max_tokens=4096,
+    )
     return resp.choices[0].message.content or ""
 
 
 async def _call_gemini(system, user):
     import google.generativeai as genai
+
     key = os.environ.get("GEMINI_API_KEY", "")
-    if not key: raise ValueError("GEMINI_API_KEY not set")
+    if not key:
+        raise ValueError("GEMINI_API_KEY not set")
     genai.configure(api_key=key)
-    # Use gemini-2.0-flash to align with Emergent's gemini-3-flash-preview tier
     model = genai.GenerativeModel("gemini-2.0-flash-exp", system_instruction=system)
     resp = await model.generate_content_async(user)
     return resp.text
@@ -163,17 +179,26 @@ async def llm_call(*, task: TaskType, system: str, user: str,
 
 
 def parse_json_loose(text: str) -> dict:
-    if not text: return {}
-    try: return json.loads(text)
-    except: pass
+    if not text:
+        return {}
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
     fence = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
     if fence:
-        try: return json.loads(fence.group(1))
-        except: pass
+        try:
+            return json.loads(fence.group(1))
+        except json.JSONDecodeError:
+            pass
+
     m = re.search(r"\{.*\}", text, re.DOTALL)
     if m:
-        try: return json.loads(m.group(0))
-        except: pass
+        try:
+            return json.loads(m.group(0))
+        except json.JSONDecodeError:
+            pass
     return {}
 
 

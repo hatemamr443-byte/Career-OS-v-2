@@ -272,10 +272,14 @@ async def wellbeing_check(user=Depends(get_current_user)):
     streak = user_doc.get("streak", 0)
 
     risk_score = 0
-    if rejection_streak >= 5:  risk_score += 30
-    if rejection_streak >= 10: risk_score += 20
-    if total_apps > 50 and offer_count == 0: risk_score += 25
-    if streak == 0: risk_score += 10
+    if rejection_streak >= 5:
+        risk_score += 30
+    if rejection_streak >= 10:
+        risk_score += 20
+    if total_apps > 50 and offer_count == 0:
+        risk_score += 25
+    if streak == 0:
+        risk_score += 10
     risk_level = "low" if risk_score < 30 else "medium" if risk_score < 60 else "high"
 
     recommendations = []

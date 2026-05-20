@@ -81,9 +81,8 @@ def _day1_email(name: str, profile_pct: int = 0) -> dict:
 
 
 def _day3_email(name: str) -> dict:
-    first = name.split()[0] if name else "there"
     return {
-        "subject": f"Have you tried the Chrome Extension? 🔌",
+        "subject": "Have you tried the Chrome Extension? 🔌",
         "html": f"""
 <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#09090b;color:#f4f4f5;padding:32px;border-radius:12px">
   <h2 style="font-size:20px;font-weight:800">Save any job in one click 🔌</h2>

@@ -8,7 +8,6 @@ from models import new_id
 from auth import get_current_user
 from llm_service import parse_json_loose
 from orchestrator import orchestrator
-from event_bus import event_bus
 from activity import log_activity
 from xp import award_xp
 from ai_limits import check_ai_quota

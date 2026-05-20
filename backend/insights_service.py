@@ -21,9 +21,6 @@ from typing import Any
 
 from db import (
     db as mongo_db,
-    applications,
-    jobs,
-    profiles,
 )
 from career_intelligence import CareerIntelligence
 

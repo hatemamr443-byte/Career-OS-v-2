@@ -3,7 +3,7 @@ import os
 import requests
 import pytest
 
-BASE = os.environ["REACT_APP_BACKEND_URL"].rstrip("/") if os.environ.get("REACT_APP_BACKEND_URL") else "https://strategic-careers-ai.preview.emergentagent.com"
+BASE = os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8001").rstrip("/")
 
 # ── Health ──
 def test_health_root():

@@ -1,6 +1,5 @@
 """AI Career OS backend tests."""
 import os
-import time
 import pytest
 import requests
 

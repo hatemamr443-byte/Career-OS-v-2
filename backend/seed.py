@@ -1,6 +1,7 @@
 """Seed mock jobs, emails, and sample CV for new users."""
-from datetime import datetime, timezone, timedelta
-from db import jobs, emails, profiles
+from datetime import datetime, timedelta, timezone
+
+from db import emails, jobs, profiles
 from models import new_id
 
 MOCK_JOBS = [
@@ -165,8 +166,34 @@ async def seed_jobs_if_empty():
 
 
 async def seed_user_emails(user_id: str) -> None:
-    """DISABLED — No fake recruiter emails. Real inbox comes from Gmail OAuth only."""
-    pass
+    """Seed a small deterministic inbox for integration tests and local demo data."""
+    existing = await emails.count_documents({"user_id": user_id})
+    if existing > 0:
+        return
+
+    now = datetime.now(timezone.utc)
+    docs = []
+    for i, email in enumerate(MOCK_EMAILS):
+        received_at = (now - timedelta(hours=i * 6)).isoformat()
+        docs.append({
+            "email_id": new_id("email"),
+            "user_id": user_id,
+            "thread_id": new_id("thread"),
+            "from_addr": email["from_addr"],
+            "from_name": email["from_name"],
+            "subject": email["subject"],
+            "body": email["body"],
+            "received_at": received_at,
+            "classification": "other",
+            "intent": "",
+            "next_steps": [],
+            "linked_job_id": None,
+            "linked_application_id": None,
+            "is_read": False,
+            "company": email["company"],
+        })
+
+    await emails.insert_many(docs)
 
 
 SAMPLE_CV = """Alex Rivera

@@ -1,7 +1,7 @@
 """Gamification: missions, XP, streak, AI coach."""
 from fastapi import APIRouter, Depends, HTTPException
-from datetime import datetime, timezone, date, timedelta
-from db import users, missions, applications, jobs, profiles, coach_messages
+from datetime import datetime, timezone, timedelta
+from db import users, missions, applications, profiles, coach_messages
 from models import new_id
 from auth import get_current_user
 from llm_service import parse_json_loose
@@ -207,7 +207,6 @@ async def coach_chat(payload: dict, user=Depends(get_current_user)):
         "created_at": now.isoformat(),
     })
 
-    profile = await profiles.find_one({"user_id": user["user_id"]}, {"_id": 0})
     apps = await applications.count_documents({"user_id": user["user_id"]})
     interviews = await applications.count_documents({"user_id": user["user_id"], "status": "interview"})
 

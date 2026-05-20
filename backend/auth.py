@@ -3,13 +3,12 @@
 REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
 """
 from fastapi import APIRouter, HTTPException, Request, Response, Depends
-from fastapi.responses import JSONResponse
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 import httpx
 
 from db import users, sessions
-from models import User, new_id, now_utc
+from models import User, new_id
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 

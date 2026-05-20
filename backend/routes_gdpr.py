@@ -7,7 +7,6 @@ Endpoints:
   DELETE /api/me/account     → permanent account deletion
   GET  /api/me/data-summary  → what data we hold
 """
-import os
 import json
 import zipfile
 import io
@@ -15,13 +14,12 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from db import (
-    users, profiles, jobs, applications, activity_logs,
+    users, profiles, applications, activity_logs,
     notifications, xp_events, cv_versions, interview_sessions,
     emails as emails_col, referrals, bookmarks, ai_usage,
     db as mongo_db,
 )
 from auth import get_current_user
-from models import new_id
 import logging
 
 logger = logging.getLogger(__name__)

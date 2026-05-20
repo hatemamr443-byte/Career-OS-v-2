@@ -1,12 +1,19 @@
 """Activity Feed, Profile Completeness, Onboarding — P1 Retention Core."""
-from fastapi import APIRouter, Depends, HTTPException
 from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException
+
+from activity import log_activity
+from auth import get_current_user
 from db import (
-    activity_logs, profiles, applications, users,
-    onboarding as onboarding_col, xp_events, notifications as notif_col
+    activity_logs,
+    applications,
+    notifications as notif_col,
+    onboarding as onboarding_col,
+    profiles,
+    users,
 )
 from models import new_id
-from auth import get_current_user
 
 router = APIRouter(prefix="/api", tags=["activity"])
 
@@ -14,9 +21,6 @@ router = APIRouter(prefix="/api", tags=["activity"])
 # ─────────────────────────────────────────────
 # ACTIVITY FEED
 # ─────────────────────────────────────────────
-
-# Re-exported from activity.py for backwards compatibility
-from activity import log_activity  # noqa: F401
 
 
 @router.get("/insights/activity")

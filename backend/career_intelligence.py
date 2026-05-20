@@ -18,10 +18,10 @@ Usage:
   await ci.record_event("job_applied", {...})  # Update graph
   signals = await ci.cross_feature_signals()   # Signals for feature coordination
 """
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from db import (
     profiles, applications, jobs, activity_logs,
-    xp_events, cv_versions, interview_sessions,
+    cv_versions, interview_sessions,
     db as mongo_db,
 )
 import logging
@@ -77,7 +77,6 @@ class CareerIntelligence:
             outcome_counts = {"offer": 0, "rejected": 0, "interview": 0, "applied": 0}
             recent_companies = []
             rejected_roles   = []
-            interview_rates_by_seniority: dict[str, list] = {}
 
             for app in apps:
                 status = app.get("status", "")

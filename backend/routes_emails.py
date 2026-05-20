@@ -1,6 +1,5 @@
 """Email intelligence: AI-classified threads."""
 from fastapi import APIRouter, Depends, HTTPException
-from datetime import datetime, timezone
 from db import emails
 from auth import get_current_user
 from llm_service import llm_call, parse_json_loose

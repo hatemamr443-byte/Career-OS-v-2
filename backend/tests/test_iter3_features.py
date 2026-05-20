@@ -1,7 +1,6 @@
 """Iteration 3: quota gating, billing cancel, PDF upload, Remotive ingest."""
 import io
 import os
-import time
 import pytest
 import requests
 from pymongo import MongoClient

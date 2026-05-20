@@ -1,10 +1,31 @@
 """Main FastAPI server for AI Career OS."""
-from fastapi import FastAPI, Depends, Request
-from starlette.middleware.cors import CORSMiddleware
 import logging
 import os
-from dotenv import load_dotenv
 from pathlib import Path
+
+from dotenv import load_dotenv
+from fastapi import Depends, FastAPI, Request
+from starlette.middleware.cors import CORSMiddleware
+
+from auth import get_current_user, router as auth_router
+from routes_activity import router as activity_router
+from routes_billing import router as billing_router, webhook_router as billing_webhook
+from routes_cv import router as cv_router
+from routes_cv_intel import router as cv_intel_router
+from routes_decision import router as decision_router
+from routes_emails import router as emails_router
+from routes_gamification import router as gam_router
+from routes_gdpr import router as gdpr_router
+from routes_gmail import router as gmail_router
+from routes_insights import router as insights_router
+from routes_interview import router as interview_router
+from routes_jobs import router as jobs_router
+from routes_notifications import router as notifications_router
+from routes_onboarding import router as onboarding_router
+from routes_orchestrator import router as orchestrator_router
+from routes_profile import router as profile_router
+from routes_salary import router as salary_router
+from seed import seed_jobs_if_empty, seed_user_emails, seed_user_profile
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -16,6 +37,7 @@ if _sentry_dsn:
         import sentry_sdk
         from sentry_sdk.integrations.fastapi import FastApiIntegration
         from sentry_sdk.integrations.starlette import StarletteIntegration
+
         sentry_sdk.init(
             dsn=_sentry_dsn,
             integrations=[StarletteIntegration(), FastApiIntegration()],
@@ -27,26 +49,6 @@ if _sentry_dsn:
         logging.getLogger(__name__).info("Sentry initialized ✓")
     except ImportError:
         logging.getLogger(__name__).warning("sentry-sdk not installed — skipping")
-
-from auth import router as auth_router, get_current_user
-from routes_jobs import router as jobs_router
-from routes_emails import router as emails_router
-from routes_gamification import router as gam_router
-from routes_insights import router as insights_router
-from routes_profile import router as profile_router
-from routes_billing import router as billing_router, webhook_router as billing_webhook
-from routes_notifications import router as notifications_router
-from routes_activity import router as activity_router
-from routes_onboarding import router as onboarding_router
-from routes_gmail import router as gmail_router
-from routes_cv_intel   import router as cv_intel_router
-from routes_cv         import router as cv_router
-from routes_interview  import router as interview_router
-from routes_salary     import router as salary_router
-from routes_gdpr       import router as gdpr_router
-from routes_decision   import router as decision_router
-from routes_orchestrator import router as orchestrator_router
-from seed import seed_jobs_if_empty, seed_user_emails, seed_user_profile
 
 app = FastAPI(
     title="Career OS — AI Career Intelligence System",
@@ -81,9 +83,10 @@ app.include_router(orchestrator_router)
 async def health():
     """Liveness probe — Render health check. Returns 200 if process is alive."""
     from datetime import datetime, timezone
+
     return {
-        "status":    "ok",
-        "version":   "2.1.0",
+        "status": "ok",
+        "version": "2.1.0",
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -91,9 +94,11 @@ async def health():
 @app.get("/health/ready")
 async def health_ready():
     """Readiness probe — checks DB + LLM availability before accepting traffic."""
+    from datetime import datetime, timezone
+
     from db import db as mongo_db
     from llm_service import llm_health_check
-    from datetime import datetime, timezone
+
     issues = []
 
     # DB check
@@ -112,12 +117,12 @@ async def health_ready():
 
     ready = db_status == "connected"  # DB is the hard dependency
     return {
-        "ready":     ready,
-        "status":    "ready" if ready else "degraded",
-        "version":   "2.1.0",
-        "db":        db_status,
-        "llm":       llm_status,
-        "issues":    issues,
+        "ready": ready,
+        "status": "ready" if ready else "degraded",
+        "version": "2.1.0",
+        "db": db_status,
+        "llm": llm_status,
+        "issues": issues,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -140,7 +145,8 @@ async def on_startup():
     await seed_jobs_if_empty()
     # Ensure dedupe race-safety on jobs.content_hash (partial index — only docs that have the field)
     try:
-        from db import jobs as jobs_col, db as mongo_db
+        from db import db as mongo_db, jobs as jobs_col
+
         await jobs_col.create_index(
             "content_hash",
             unique=True,
@@ -178,15 +184,14 @@ async def on_startup():
         await mongo_db.insight_dismissals.create_index([("user_id", 1), ("insight_id", 1)], unique=True, name="insight_dismiss_uq")
         await mongo_db.salary_cache.create_index([("user_id", 1), ("role", 1), ("location", 1)], name="salary_cache_uq")
     except Exception as ex:
-        import logging
         logging.warning("Index creation skipped: %s", ex)
 
     # Wire orchestrator subscribers (idempotent)
     try:
         from orchestrator import wire_subscribers
+
         wire_subscribers()
     except Exception as ex:
-        import logging
         logging.warning("Subscriber wiring failed: %s", ex)
 
 
@@ -197,8 +202,10 @@ async def cron_welcome_emails(request: Request):
     token = request.headers.get("x-cron-token", "")
     if token != os.environ.get("CRON_TOKEN", ""):
         from fastapi import HTTPException
+
         raise HTTPException(401, "Unauthorized")
     from welcome_emails import run_drip_sequence
+
     return await run_drip_sequence()
 
 
@@ -207,6 +214,7 @@ async def ai_usage_route(user=Depends(get_current_user)):
     """Expose AI usage summary for the frontend."""
     from ai_limits import get_ai_usage_summary
     from quota import get_effective_plan
+
     plan = await get_effective_plan(user)
     if user.get("trial_active"):
         plan = "pro"
