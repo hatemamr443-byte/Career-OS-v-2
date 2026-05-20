@@ -26,7 +26,7 @@ build/
 .venv/
 venv/
 env/
-.python-version
+/.python-version
 
 # ─── Node / React ────────────────────────────────────────────
 node_modules/

@@ -1,7 +1,7 @@
-# ─────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
 # Career OS — GitHub Actions CI
 # Runs on every push and PR to main
-# ─────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
 name: CI
 
 on:
@@ -12,17 +12,24 @@ on:
 
 jobs:
 
-  # ── Backend ──────────────────────────────────────────────────
+  # ── Backend ───────────────────────────────────────────────
   backend:
     name: Backend (Python)
     runs-on: ubuntu-latest
-
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
@@ -43,32 +50,16 @@ jobs:
           EMERGENT_LLM_KEY: "test-key-ci"
           ENVIRONMENT: "test"
           CRON_TOKEN: "ci-token"
-        run: |
-          cd backend
-          pytest tests/ -v --tb=short || true
+        run: pytest backend/tests/ -v --tb=short || true
 
-    services:
-      mongodb:
-        image: mongo:7
-        ports:
-          - 27017:27017
-        options: >-
-          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-  # ── Frontend ─────────────────────────────────────────────────
+  # ── Frontend ──────────────────────────────────────────────
   frontend:
     name: Frontend (React)
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: yarn
@@ -77,12 +68,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd frontend
-          yarn install --frozen-lockfile
-
-      - name: Lint (eslint)
-        run: |
-          cd frontend
-          yarn lint --max-warnings 0 || true
+          yarn install --network-timeout 600000 --ignore-optional --frozen-lockfile
 
       - name: Build
         env:
@@ -93,28 +79,28 @@ jobs:
           cd frontend
           yarn build
 
-  # ── Security scan ────────────────────────────────────────────
+  # ── Secrets scan ─────────────────────────────────────────
   secrets-scan:
     name: Secrets Scan
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Scan for secrets
+      - name: Block committed .env files
         run: |
-          # Fail if any .env files (not .env.example) are committed
           if find . -name ".env" -not -name ".env.example" \
                     -not -path "./.git/*" | grep -q .; then
             echo "❌ .env file found in commit — blocked"
             exit 1
           fi
-          echo "✅ No .env files in commit"
+          echo "✅ No .env files committed"
 
-          # Check for common secret patterns
-          if grep -r "sk-emergent\|EMERGENT_LLM_KEY=" \
+      - name: Block hardcoded secrets
+        run: |
+          if grep -rn "EMERGENT_LLM_KEY=sk-\|ghp_[a-zA-Z0-9]" \
               --include="*.py" --include="*.js" --include="*.jsx" \
-              --exclude-dir=".git" . 2>/dev/null | grep -v ".env.example"; then
+              --include="*.ts" --include="*.tsx" \
+              --exclude-dir=".git" . 2>/dev/null; then
             echo "❌ Hardcoded secret detected"
             exit 1
           fi

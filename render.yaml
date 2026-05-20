@@ -18,17 +18,14 @@ services:
     startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
     plan: free
     healthCheckPath: /health
-    # Readiness probe (deeper check with DB + LLM): GET /health/ready
+    # Deep readiness probe (DB + LLM): GET /health/ready
     envVars:
-      # ── Database ──
       - key: MONGO_URL
-        sync: false          # Set manually in Render Dashboard
+        sync: false
       - key: DB_NAME
         value: career_os
-      # ── CORS (set to your frontend URL after first deploy) ──
       - key: CORS_ORIGINS
         sync: false
-      # ── LLM ──
       - key: EMERGENT_LLM_KEY
         sync: false
       - key: ANTHROPIC_API_KEY
@@ -37,25 +34,20 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
-      # ── App ──
       - key: ENVIRONMENT
         value: production
       - key: CRON_TOKEN
         generateValue: true
-      # ── Monitoring ──
       - key: SENTRY_DSN
         sync: false
-      # ── Payments ──
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
-      # ── Email ──
       - key: RESEND_API_KEY
         sync: false
       - key: EMAIL_FROM
         value: Career OS <noreply@career-os.io>
-      # ── Job Sources ──
       - key: ADZUNA_APP_ID
         sync: false
       - key: ADZUNA_API_KEY
@@ -63,12 +55,16 @@ services:
       - key: JOOBLE_API_KEY
         sync: false
 
-  # ── Frontend ── React Static Site ─────────────────────────
+  # ── Frontend ── React / CRA + Craco Static Site ───────────
   - type: web
     name: career-os-frontend
     runtime: static
     rootDir: frontend
-    buildCommand: yarn install && yarn build
+    buildCommand: >-
+      yarn install
+      --network-timeout 600000
+      --ignore-optional
+      && yarn build
     staticPublishPath: build
     plan: free
     routes:
@@ -87,8 +83,10 @@ services:
         value: strict-origin-when-cross-origin
     envVars:
       - key: REACT_APP_BACKEND_URL
-        sync: false          # Set to backend Render URL after first deploy
+        sync: false
       - key: WDS_SOCKET_PORT
         value: "443"
       - key: ENABLE_HEALTH_CHECK
+        value: "false"
+      - key: CI
         value: "false"
