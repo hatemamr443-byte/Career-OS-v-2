@@ -94,7 +94,7 @@ async def tailor_cv(job_id: str, user=Depends(get_current_user)):
 @router.post("/cover-letter/{job_id}")
 async def generate_cover_letter(
     job_id: str,
-    payload: dict = {},
+    payload: dict | None = None,
     user=Depends(get_current_user),
 ):
     """
@@ -103,6 +103,8 @@ async def generate_cover_letter(
     """
     profile, job = await _get_profile_and_job(user["user_id"], job_id)
 
+    if payload is None:
+        payload = {}
     tone      = (payload.get("tone") or "professional").lower()
     highlight = payload.get("highlight") or ""
 
