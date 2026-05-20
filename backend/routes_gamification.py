@@ -79,10 +79,34 @@ async def get_today_missions(user=Depends(get_current_user)):
             raise ValueError("empty")
     except Exception:
         ms = [
-            {"title": "Apply to 1 high-match job", "description": "Pick a job with 70%+ match score and submit your application.", "action_type": "apply", "xp_reward": 25, "reasoning": "Daily action keeps momentum."},
-            {"title": "Review your top 3 recommendations", "description": "Open the Jobs tab and read the AI reasoning for your top picks.", "action_type": "review", "xp_reward": 10, "reasoning": "Informed decisions beat volume."},
-            {"title": "Reflect on rejections", "description": "Check your insights — any pattern? Note one improvement.", "action_type": "reflect", "xp_reward": 15, "reasoning": "Learning loop."},
-            {"title": "Polish your CV headline", "description": "Open Profile → make your headline sharper and more specific.", "action_type": "update_cv", "xp_reward": 15, "reasoning": "Strong CV improves match scores."},
+            {
+                "title": "Apply to 1 high-match job",
+                "description": "Pick a job with 70%+ match score and submit your application.",
+                "action_type": "apply",
+                "xp_reward": 25,
+                "reasoning": "Daily action toward goal."
+            },
+            {
+                "title": "Review your top 3 recommendations",
+                "description": "Open the Jobs tab and read the AI reasoning for your top picks.",
+                "action_type": "review",
+                "xp_reward": 10,
+                "reasoning": "Smart job hunting."
+            },
+            {
+                "title": "Reflect on rejections",
+                "description": "Check your insights — any pattern? Note one improvement.",
+                "action_type": "reflect",
+                "xp_reward": 15,
+                "reasoning": "Learning loop."
+            },
+            {
+                "title": "Polish your CV headline",
+                "description": "Open Profile → make your headline sharper and more specific.",
+                "action_type": "update_cv",
+                "xp_reward": 15,
+                "reasoning": "Strong first impression."
+            },
         ]
 
     docs = []
