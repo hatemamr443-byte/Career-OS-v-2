@@ -1,30 +1,105 @@
 import { useEffect, useState, useCallback } from "react";
 import { api } from "../lib/api";
-import { Sparkle, EnvelopeSimple, Calendar, X, CheckCircle } from "@phosphor-icons/react";
+import { Sparkle, EnvelopeSimple, Calendar, X, CheckCircle, ArrowSquareOut } from "@phosphor-icons/react";
 
 const CLASS_COLOR = {
-    interview: "#007AFF",
-    offer: "#10B981",
-    rejection: "#EF4444",
-    recruiter: "#FBBF24",
-    follow_up: "#A855F7",
-    other: "#71717A",
+    interview:         "#007AFF",
+    offer:             "#10B981",
+    rejection:         "#EF4444",
+    recruiter_reachout:"#FBBF24",
+    assessment:        "#F59E0B",
+    followup:          "#A855F7",
+    ghosted:           "#52525b",
+    other:             "#71717A",
 };
 
+function GmailCTA({ onConnected }) {
+    const [loading, setLoading] = useState(false);
+
+    const connect = async () => {
+        setLoading(true);
+        try {
+            const r = await api.get("/gmail/connect");
+            window.location.href = r.data.auth_url;
+        } catch {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center mb-5">
+                <EnvelopeSimple size={28} className="text-zinc-400" weight="duotone" />
+            </div>
+            <h2 className="font-display font-bold text-2xl mb-3">Connect your Gmail</h2>
+            <p className="text-sm text-zinc-500 max-w-sm mb-8 leading-relaxed">
+                Career OS reads your recruiter emails and classifies them automatically —
+                interviews, rejections, offers, and more.
+            </p>
+            <button
+                onClick={connect}
+                disabled={loading}
+                className="flex items-center gap-2 bg-zinc-50 text-black px-5 py-2.5
+                           rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors
+                           disabled:opacity-60"
+            >
+                <ArrowSquareOut size={15} />
+                {loading ? "Redirecting…" : "Connect Gmail"}
+            </button>
+            <p className="text-xs text-zinc-600 mt-4">Read-only access. We never send emails on your behalf.</p>
+        </div>
+    );
+}
+
 export default function Emails() {
-    const [threads, setThreads] = useState([]);
-    const [active, setActive] = useState(null);
+    const [threads, setThreads]       = useState([]);
+    const [active, setActive]         = useState(null);
     const [classifying, setClassifying] = useState(false);
+    const [syncing, setSyncing]       = useState(false);
+    const [gmailStatus, setGmailStatus] = useState(null); // null=loading, false=not connected, true=connected
+
+    const loadGmailStatus = useCallback(async () => {
+        try {
+            const r = await api.get("/gmail/status");
+            setGmailStatus(r.data.connected);
+        } catch {
+            setGmailStatus(false);
+        }
+    }, []);
 
     const load = useCallback(async () => {
         const r = await api.get("/emails");
         setThreads(r.data.threads || []);
-        setActive((curr) => curr || (r.data.threads?.length ? r.data.threads[0] : null));
+        setActive(curr => curr || (r.data.threads?.length ? r.data.threads[0] : null));
     }, []);
 
     useEffect(() => {
-        load();
-    }, [load]);
+        loadGmailStatus();
+    }, [loadGmailStatus]);
+
+    useEffect(() => {
+        if (gmailStatus) load();
+    }, [gmailStatus, load]);
+
+    // Handle ?gmail=connected redirect
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("gmail") === "connected") {
+            setGmailStatus(true);
+            window.history.replaceState({}, "", "/emails");
+        }
+    }, []);
+
+    const syncGmail = async () => {
+        setSyncing(true);
+        try {
+            await api.post("/gmail/sync");
+            await load();
+        } catch (err) {
+            console.error("sync failed:", err);
+        }
+        setSyncing(false);
+    };
 
     const classifyAll = async () => {
         setClassifying(true);
@@ -43,23 +118,53 @@ export default function Emails() {
                 <div>
                     <div className="overline">Inbox Intelligence</div>
                     <h1 className="font-display font-black text-4xl tracking-tight mt-2">Recruiter Threads</h1>
-                    <p className="text-zinc-500 mt-2 text-sm">AI-classified, linked to jobs.</p>
+                    <p className="text-zinc-500 mt-2 text-sm">AI-classified, linked to your applications.</p>
                 </div>
-                <button
-                    onClick={classifyAll}
-                    disabled={classifying}
-                    data-testid="classify-all-btn"
-                    className="bg-blue-600/10 text-blue-400 border border-blue-500/20 hover:bg-blue-600/20 transition-colors rounded-lg px-4 py-2 text-sm flex items-center gap-2"
-                >
-                    <Sparkle size={14} weight="fill" />
-                    {classifying ? "Classifying…" : "Classify all (Gemini Flash)"}
-                </button>
+                {gmailStatus && (
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={syncGmail}
+                            disabled={syncing}
+                            className="bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-zinc-700
+                                       transition-colors rounded-lg px-4 py-2 text-sm flex items-center gap-2"
+                        >
+                            {syncing ? "Syncing…" : "Sync Gmail"}
+                        </button>
+                        <button
+                            onClick={classifyAll}
+                            disabled={classifying}
+                            data-testid="classify-all-btn"
+                            className="bg-blue-600/10 text-blue-400 border border-blue-500/20
+                                       hover:bg-blue-600/20 transition-colors rounded-lg px-4 py-2
+                                       text-sm flex items-center gap-2"
+                        >
+                            <Sparkle size={14} weight="fill" />
+                            {classifying ? "Classifying…" : "Classify all"}
+                        </button>
+                    </div>
+                )}
             </div>
 
+            {/* Gmail CTA — if not connected */}
+            {gmailStatus === false && <GmailCTA />}
+
+            {/* Loading */}
+            {gmailStatus === null && (
+                <div className="text-center py-20 text-zinc-500 text-sm">Loading…</div>
+            )}
+
+            {gmailStatus && (
             <div className="grid lg:grid-cols-3 gap-4 h-[calc(100vh-220px)]">
                 <div className="card-soft overflow-y-auto" data-testid="thread-list">
                     {threads.length === 0 && (
-                        <div className="p-6 text-zinc-500 text-sm">No emails yet.</div>
+                        <div className="p-8 text-center text-zinc-500">
+                            <EnvelopeSimple size={24} className="mx-auto mb-3 opacity-30" />
+                            <p className="text-sm">No emails synced yet.</p>
+                            <button onClick={syncGmail} disabled={syncing}
+                                className="text-xs text-zinc-400 hover:text-zinc-200 mt-2 transition-colors">
+                                {syncing ? "Syncing…" : "Sync now"}
+                            </button>
+                        </div>
                     )}
                     {threads.map((t) => (
                         <button
@@ -133,6 +238,7 @@ export default function Emails() {
                     )}
                 </div>
             </div>
+            )}
         </div>
     );
 }

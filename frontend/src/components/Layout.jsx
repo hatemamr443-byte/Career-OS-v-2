@@ -2,17 +2,40 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
-import { House, Briefcase, EnvelopeSimple, ChartLine, GraphIcon, User as UserIcon, SignOut, Sparkle, FlameIcon, CreditCard } from "@phosphor-icons/react";
-import AICoachDock from "./AICoachDock";
+import {
+    House, Briefcase, EnvelopeSimple, ChartLine, GraphIcon,
+    User as UserIcon, SignOut, Sparkle, CreditCard,
+    BookmarkSimple, FileText, ChatCircle, CurrencyDollar,
+    CalendarBlank, UsersThree, Warning, Brain, ShieldCheck,
+    FlameIcon
+} from "@phosphor-icons/react";
+import AICoachDock        from "./AICoachDock";
+import NotificationsDrawer from "./NotificationsDrawer";
+import LanguageSwitcher   from "./LanguageSwitcher";
+import { Link }           from "react-router-dom";
 
-const NAV = [
-    { to: "/dashboard", label: "Dashboard", icon: House },
-    { to: "/jobs", label: "Jobs", icon: Briefcase },
-    { to: "/emails", label: "Inbox", icon: EnvelopeSimple },
-    { to: "/insights", label: "Insights", icon: ChartLine },
-    { to: "/career-map", label: "Career Map", icon: GraphIcon },
-    { to: "/profile", label: "Profile", icon: UserIcon },
+const NAV_MAIN = [
+    { to: "/dashboard",  label: "Dashboard",   icon: House          },
+    { to: "/jobs",       label: "Jobs",         icon: Briefcase      },
+    { to: "/bookmarks",  label: "Bookmarks",    icon: BookmarkSimple },
+    { to: "/emails",     label: "Inbox",        icon: EnvelopeSimple },
+    { to: "/timeline",   label: "Timeline",     icon: CalendarBlank  },
+    { to: "/insights",   label: "Insights",     icon: ChartLine      },
+    { to: "/career-map", label: "Career Map",   icon: GraphIcon      },
+];
+
+const NAV_TOOLS = [
+    { to: "/cv-tailor",      label: "CV Tailor",        icon: FileText       },
+    { to: "/interview-prep", label: "Interview",        icon: ChatCircle     },
+    { to: "/salary",         label: "Salary Intel",     icon: CurrencyDollar },
+    { to: "/decision",       label: "Decision Engine",  icon: Brain          },
+    { to: "/referral",       label: "Refer Friends",    icon: UsersThree     },
+];
+
+const NAV_BOTTOM = [
+    { to: "/profile", label: "Profile", icon: UserIcon   },
     { to: "/billing", label: "Billing", icon: CreditCard },
+    { to: "/privacy", label: "Privacy", icon: ShieldCheck },
 ];
 
 export default function Layout() {
@@ -50,8 +73,56 @@ export default function Layout() {
                     </div>
                 </div>
 
-                <nav className="flex-1 px-3 py-4 space-y-1">
-                    {NAV.map(({ to, label, icon: Icon }) => (
+                <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+                    {NAV_MAIN.map(({ to, label, icon: Icon }) => (
+                        <NavLink
+                            key={to}
+                            to={to}
+                            data-testid={`nav-${label.toLowerCase().replace(/\s/g, "-")}`}
+                            className={({ isActive }) =>
+                                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                                    isActive
+                                        ? "bg-zinc-50 text-black font-medium"
+                                        : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
+                                }`
+                            }
+                        >
+                            <Icon size={18} weight="duotone" />
+                            <span>{label}</span>
+                        </NavLink>
+                    ))}
+
+                    {/* AI Tools section */}
+                    <div className="pt-4 pb-1 px-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
+                            AI Tools
+                        </p>
+                    </div>
+                    {NAV_TOOLS.map(({ to, label, icon: Icon }) => (
+                        <NavLink
+                            key={to}
+                            to={to}
+                            data-testid={`nav-${label.toLowerCase().replace(/\s/g, "-")}`}
+                            className={({ isActive }) =>
+                                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                                    isActive
+                                        ? "bg-zinc-50 text-black font-medium"
+                                        : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
+                                }`
+                            }
+                        >
+                            <Icon size={18} weight="duotone" />
+                            <span>{label}</span>
+                        </NavLink>
+                    ))}
+
+                    {/* Account section */}
+                    <div className="pt-4 pb-1 px-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
+                            Account
+                        </p>
+                    </div>
+                    {NAV_BOTTOM.map(({ to, label, icon: Icon }) => (
                         <NavLink
                             key={to}
                             to={to}
@@ -116,6 +187,14 @@ export default function Layout() {
 
             {/* Main */}
             <main className="flex-1 overflow-x-hidden relative" data-testid="main-content">
+                {/* Top bar */}
+                <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-900 bg-black/20">
+                    <TrialBanner user={user} />
+                    <div className="flex items-center gap-3 ms-auto">
+                        <LanguageSwitcher />
+                        <NotificationsDrawer />
+                    </div>
+                </div>
                 <Outlet />
                 <button
                     onClick={() => setCoachOpen((s) => !s)}
@@ -129,4 +208,53 @@ export default function Layout() {
             </main>
         </div>
     );
+}
+
+// ── Trial Banner ──────────────────────────────────────────────────
+function TrialBanner({ user }) {
+    const [trial, setTrial]     = useState(null);
+    const [dismissed, setDismissed] = useState(false);
+
+    useEffect(() => {
+        if (!user) return;
+        api.get("/billing/trial-status").then(r => setTrial(r.data)).catch(() => {});
+    }, [user]);
+
+    if (!trial || dismissed) return null;
+
+    // Show "start trial" if eligible and on free plan
+    if (trial.can_start_trial && !trial.trial_active) {
+        return (
+            <div className="quota-banner flex-1 max-w-lg">
+                <div className="flex items-center gap-2">
+                    <Warning size={14} weight="fill" color="#FBBF24" />
+                    <span>You're on the Free plan.</span>
+                </div>
+                <div className="flex items-center gap-3">
+                    <Link to="/billing" className="text-yellow-300 text-xs font-semibold hover:underline">
+                        Start 7-day free trial →
+                    </Link>
+                    <button onClick={() => setDismissed(true)}
+                        className="text-yellow-600 hover:text-yellow-400 text-xs">✕</button>
+                </div>
+            </div>
+        );
+    }
+
+    // Show trial expiry countdown
+    if (trial.trial_active && trial.trial_ends_at) {
+        const daysLeft = Math.max(0, Math.ceil(
+            (new Date(trial.trial_ends_at) - Date.now()) / 86400000
+        ));
+        if (daysLeft <= 3) {
+            return (
+                <div className="quota-banner flex-1 max-w-lg">
+                    <span>⚡ Trial ends in {daysLeft} day{daysLeft !== 1 ? "s" : ""}.</span>
+                    <Link to="/billing">Upgrade to keep Pro →</Link>
+                </div>
+            );
+        }
+    }
+
+    return null;
 }

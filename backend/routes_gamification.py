@@ -216,3 +216,20 @@ async def coach_chat(payload: dict, user=Depends(get_current_user)):
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
     return {"reply": reply}
+
+
+# ─────────────────────────────────────────────
+# INTERNAL XP HELPER (called from other routes)
+# ─────────────────────────────────────────────
+
+async def _award_xp_direct(user_id: str, amount: int, reason: str):
+    """Award XP directly to a user from any route. Persists to xp_events collection."""
+    from db import xp_events
+@router.get("/xp/history")
+async def xp_history(user=Depends(get_current_user), limit: int = 20):
+    """Return recent XP events for the current user."""
+    from db import xp_events
+    docs = await xp_events.find(
+        {"user_id": user["user_id"]}, {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    return {"events": docs, "count": len(docs)}

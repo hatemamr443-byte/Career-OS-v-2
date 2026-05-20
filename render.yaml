@@ -1,60 +1,94 @@
-# Render Blueprint — pins build config so dashboard mis-clicks can't break the deploy.
-# Commit this file and from Render dashboard: New → Blueprint → connect repo → it reads this.
-#
+# ─────────────────────────────────────────────────────────────
+# Career OS — Render Blueprint (render.yaml)
+# Deploys: FastAPI backend + React static frontend
 # Docs: https://render.com/docs/blueprint-spec
+# ─────────────────────────────────────────────────────────────
 
 services:
-  # ── Backend: FastAPI ──
+
+  # ── Backend ── FastAPI / Uvicorn ──────────────────────────
   - type: web
-    name: career-os-api
+    name: career-os-backend
     runtime: python
     rootDir: backend
-    plan: free
-    buildCommand: pip install --upgrade pip && pip install -r requirements.txt --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/
+    buildCommand: >-
+      pip install
+      --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/
+      -r requirements.txt
     startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    plan: free
+    healthCheckPath: /health
+    # Readiness probe (deeper check with DB + LLM): GET /health/ready
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.10
+      # ── Database ──
       - key: MONGO_URL
-        sync: false        # paste your Atlas connection string in dashboard
+        sync: false          # Set manually in Render Dashboard
       - key: DB_NAME
         value: career_os
+      # ── CORS (set to your frontend URL after first deploy) ──
       - key: CORS_ORIGINS
-        sync: false        # paste your frontend URL once known
+        sync: false
+      # ── LLM ──
       - key: EMERGENT_LLM_KEY
         sync: false
-      - key: STRIPE_API_KEY
-        value: sk_test_emergent
-      - key: ADZUNA_APP_ID
+      - key: ANTHROPIC_API_KEY
         sync: false
-      - key: ADZUNA_APP_KEY
+      - key: OPENAI_API_KEY
         sync: false
-      - key: ADZUNA_COUNTRIES
-        value: es,gb
-      - key: JOOBLE_API_KEY
+      - key: GEMINI_API_KEY
         sync: false
-      - key: JOOBLE_LOCATION
-        value: Lisbon
+      # ── App ──
+      - key: ENVIRONMENT
+        value: production
+      - key: CRON_TOKEN
+        generateValue: true
+      # ── Monitoring ──
+      - key: SENTRY_DSN
+        sync: false
+      # ── Payments ──
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      # ── Email ──
       - key: RESEND_API_KEY
         sync: false
-      - key: SENDER_EMAIL
-        value: onboarding@resend.dev
-      - key: CRON_TOKEN
+      - key: EMAIL_FROM
+        value: Career OS <noreply@career-os.io>
+      # ── Job Sources ──
+      - key: ADZUNA_APP_ID
         sync: false
-      - key: DASHBOARD_URL
-        sync: false        # paste your frontend Render URL once known
+      - key: ADZUNA_API_KEY
+        sync: false
+      - key: JOOBLE_API_KEY
+        sync: false
 
-  # ── Frontend: React CRA Static Site ──
+  # ── Frontend ── React Static Site ─────────────────────────
   - type: web
-    name: career-os-web
+    name: career-os-frontend
     runtime: static
     rootDir: frontend
-    buildCommand: yarn install --frozen-lockfile && yarn build
-    staticPublishPath: ./build
-    envVars:
-      - key: REACT_APP_BACKEND_URL
-        sync: false        # paste backend Render URL once known
+    buildCommand: yarn install && yarn build
+    staticPublishPath: build
+    plan: free
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+    envVars:
+      - key: REACT_APP_BACKEND_URL
+        sync: false          # Set to backend Render URL after first deploy
+      - key: WDS_SOCKET_PORT
+        value: "443"
+      - key: ENABLE_HEALTH_CHECK
+        value: "false"

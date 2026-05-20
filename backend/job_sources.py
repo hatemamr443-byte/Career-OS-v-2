@@ -1,11 +1,14 @@
 """Real job sources — pluggable connector interface.
 
 Priority order in ingest_all():
-1. Adzuna (pt) — primary
-2. Adzuna (gb) — fallback country
-3. Jooble — secondary source
-4. Remotive — tertiary (remote-only jobs)
-5. Existing mock seed — final fallback (only if everything else returned 0)
+1. Adzuna (pt) — Portugal primary
+2. Adzuna (gb/es) — fallback countries
+3. Jooble — secondary
+4. Remotive — remote-only
+5. WeWorkRemotely — remote tech
+6. RemoteOK — remote global
+7. Net-empregos — Portugal local
+8. Existing mock seed — final fallback
 
 Dedupe key: SHA1(title|company|location|source_url) stored as content_hash.
 """
@@ -19,9 +22,12 @@ from typing import List, Dict, Any, Optional
 from db import jobs as jobs_col
 from models import new_id
 
-REMOTIVE_URL = "https://remotive.com/api/remote-jobs"
-ADZUNA_URL = "https://api.adzuna.com/v1/api/jobs/{country}/search/1"
-JOOBLE_URL = "https://jooble.org/api/{key}"
+REMOTIVE_URL      = "https://remotive.com/api/remote-jobs"
+ADZUNA_URL        = "https://api.adzuna.com/v1/api/jobs/{country}/search/1"
+JOOBLE_URL        = "https://jooble.org/api/{key}"
+WEWORKREMOTELY_URL = "https://weworkremotely.com/remote-jobs.json"
+REMOTEOK_URL      = "https://remoteok.com/api"
+NET_EMPREGOS_URL  = "https://www.net-empregos.com/feed/rss/?cat=0&zona=0"
 
 SKILL_HINTS = [
     "python", "go", "golang", "rust", "java", "kotlin", "swift", "scala",
@@ -187,6 +193,129 @@ async def fetch_remotive(query: str = "", limit: int = 25) -> List[Dict[str, Any
     return out
 
 
+async def fetch_weworkremotely(query: str = "", limit: int = 20) -> List[Dict[str, Any]]:
+    """WeWorkRemotely — remote tech jobs globally. No API key needed."""
+    out = []
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.get(WEWORKREMOTELY_URL, headers={"User-Agent": "CareerOS/2.0"})
+            if r.status_code != 200:
+                return []
+            data = r.json()
+            jobs_list = data if isinstance(data, list) else data.get("jobs", [])
+            q_low = (query or "").lower()
+            for j in jobs_list[:limit * 2]:
+                title = j.get("title", "") or ""
+                company = j.get("company", "") or ""
+                region  = j.get("region", "Remote") or "Remote"
+                url     = j.get("url") or ""
+                if not title or not url:
+                    continue
+                desc = j.get("description") or ""
+                if q_low and q_low not in title.lower() and q_low not in desc.lower():
+                    continue
+                out.append(_normalize({
+                    "title": title,
+                    "company": company,
+                    "location": region,
+                    "remote": True,
+                    "source_url": f"https://weworkremotely.com{url}" if url.startswith("/") else url,
+                    "description": _strip_html(desc),
+                    "salary_min": None, "salary_max": None,
+                    "posted_at": j.get("created_at"),
+                }, source="weworkremotely"))
+                if len(out) >= limit:
+                    break
+    except Exception:
+        pass
+    return out
+
+
+async def fetch_remoteok(query: str = "", limit: int = 20) -> List[Dict[str, Any]]:
+    """RemoteOK — remote global jobs. No API key needed."""
+    out = []
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.get(REMOTEOK_URL,
+                headers={"User-Agent": "CareerOS/2.0", "Accept": "application/json"})
+            if r.status_code != 200:
+                return []
+            data = r.json()
+            # RemoteOK returns a legal disclaimer object as first element
+            jobs_list = [j for j in data if isinstance(j, dict) and j.get("id")]
+            q_low = (query or "").lower()
+            for j in jobs_list:
+                title   = j.get("position") or ""
+                company = j.get("company") or ""
+                url     = j.get("url") or ""
+                if not title or not url:
+                    continue
+                desc = j.get("description") or ""
+                if q_low and q_low not in title.lower() and q_low not in company.lower():
+                    continue
+                tags = j.get("tags") or []
+                salary_text = j.get("salary") or ""
+                out.append(_normalize({
+                    "title": title,
+                    "company": company,
+                    "location": "Remote",
+                    "remote": True,
+                    "source_url": url,
+                    "description": _strip_html(desc),
+                    "skills_required": [t for t in tags if isinstance(t, str)][:8],
+                    "salary_min": None, "salary_max": None,
+                    "posted_at": j.get("date"),
+                }, source="remoteok"))
+                if len(out) >= limit:
+                    break
+    except Exception:
+        pass
+    return out
+
+
+async def fetch_net_empregos(query: str = "", limit: int = 20) -> List[Dict[str, Any]]:
+    """Net-empregos — Portugal's largest local job board. RSS feed, no key."""
+    import xml.etree.ElementTree as ET
+    out = []
+    try:
+        url = NET_EMPREGOS_URL
+        if query:
+            import urllib.parse
+            url += f"&keyword={urllib.parse.quote(query)}"
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.get(url, headers={"User-Agent": "CareerOS/2.0"})
+            if r.status_code != 200:
+                return []
+        root = ET.fromstring(r.text)
+        items = root.findall(".//item")
+        for item in items[:limit]:
+            title   = (item.findtext("title") or "").strip()
+            link    = (item.findtext("link") or "").strip()
+            desc    = (item.findtext("description") or "").strip()
+            company = ""
+            location = "Portugal"
+            # Parse company from description
+            if "Empresa:" in desc:
+                company = desc.split("Empresa:")[1].split("<")[0].strip()
+            if "Local:" in desc:
+                location = desc.split("Local:")[1].split("<")[0].strip()
+            if not title or not link:
+                continue
+            out.append(_normalize({
+                "title": title,
+                "company": company or "Unknown",
+                "location": location,
+                "remote": False,
+                "source_url": link,
+                "description": _strip_html(desc),
+                "salary_min": None, "salary_max": None,
+                "posted_at": item.findtext("pubDate"),
+            }, source="net_empregos"))
+    except Exception:
+        pass
+    return out
+
+
 # ───────── Ingest with dedupe ─────────
 async def _insert_dedup(docs: List[Dict[str, Any]]) -> int:
     inserted = 0
@@ -204,21 +333,25 @@ async def _insert_dedup(docs: List[Dict[str, Any]]) -> int:
 
 
 async def ingest_all(query: str = "", limit_per_source: int = 25) -> Dict[str, Any]:
-    """Run all sources IN PARALLEL via asyncio.gather. Returns per-source stats.
-    Country list controlled by ADZUNA_COUNTRIES env (comma-separated). Default: es,gb.
-    (Portugal is NOT supported by Adzuna — supported list: at,au,be,br,ca,ch,de,es,fr,gb,in,it,mx,nl,nz,pl,ru,sg,us,za.)
-    """
-    countries = [c.strip() for c in os.environ.get("ADZUNA_COUNTRIES", "es,gb").split(",") if c.strip()]
-    jooble_location = os.environ.get("JOOBLE_LOCATION", "Lisbon")
+    """Run all sources IN PARALLEL via asyncio.gather. Returns per-source stats."""
+    countries      = [c.strip() for c in os.environ.get("ADZUNA_COUNTRIES", "es,gb").split(",") if c.strip()]
+    jooble_loc     = os.environ.get("JOOBLE_LOCATION", "Lisbon")
+    enable_pt      = os.environ.get("ENABLE_PT_SOURCES", "true").lower() != "false"
+    enable_remote  = os.environ.get("ENABLE_REMOTE_SOURCES", "true").lower() != "false"
 
-    # Build parallel tasks: (source_name, coroutine)
     tasks: List[tuple] = []
     for country in countries:
         tasks.append((f"adzuna_{country}", fetch_adzuna(country, query=query, limit=limit_per_source)))
-    tasks.append(("jooble", fetch_jooble(query=query, location=jooble_location, limit=limit_per_source)))
+    tasks.append(("jooble", fetch_jooble(query=query, location=jooble_loc, limit=limit_per_source)))
     tasks.append(("remotive", fetch_remotive(query=query, limit=limit_per_source)))
 
-    # Fire all sources concurrently — p99 drops from sum-of-latencies to max-of-latencies
+    if enable_remote:
+        tasks.append(("weworkremotely", fetch_weworkremotely(query=query, limit=limit_per_source)))
+        tasks.append(("remoteok", fetch_remoteok(query=query, limit=limit_per_source)))
+
+    if enable_pt:
+        tasks.append(("net_empregos", fetch_net_empregos(query=query, limit=limit_per_source)))
+
     results = await asyncio.gather(*(t for _, t in tasks), return_exceptions=True)
 
     breakdown: Dict[str, Dict[str, int]] = {}
@@ -237,7 +370,7 @@ async def ingest_all(query: str = "", limit_per_source: int = 25) -> Dict[str, A
     }
 
 
-# Back-compat shim for the previously-shipped /api/jobs/ingest payload
+# Back-compat shim
 async def ingest_remotive(query: str = "", limit: int = 30) -> Dict[str, int]:
     docs = await fetch_remotive(query=query, limit=limit)
     inserted = await _insert_dedup(docs)

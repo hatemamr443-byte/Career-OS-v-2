@@ -1,77 +1,97 @@
-# AI Career OS — PRD
+# Career OS — PRD (Living Document)
 
-## Original Problem Statement
-Build a full-stack AI-powered career decision system. Not a job board — an AI agent that decides, recommends, tracks, and learns.
+## Original problem statement (verbatim)
+> Complete senior-level audit, refinement, orchestration redesign, UX unification,
+> AI systems optimization, and production-readiness upgrade for the entire Career
+> OS project — **as an evolutionary upgrade on top of the uploaded codebase**, not
+> a rebuild. Preserve all features. Goal: one intelligent operating system for
+> career growth.
 
-## User Choices
-- **Auth**: Emergent Google OAuth + JWT-ready abstraction
-- **LLM**: Claude Sonnet 4.5 (reasoning) + Gemini 3 Flash (fast/bulk)
-- **DB**: MongoDB
-- **Billing**: Stripe (Pro $19 / Team $49 / Free)
-- **Job source**: Mock seed + Remotive real API (Phase 2: Playwright connectors)
+## Architecture done (this iteration — P0 + P1)
 
-## Implemented (through Jun 2026)
-### v0.1 — Core MVP
-- ✅ Emergent Google OAuth + AuthService abstraction
-- ✅ AI Decision Engine (Claude) — score, decision, reasoning, strengths, gaps
-- ✅ Application lifecycle tracker (6 states + timeline)
-- ✅ Mock recruiter inbox with AI classification (Gemini Flash)
-- ✅ Daily AI-generated missions + XP/streak/level + AI Coach (Claude with context)
-- ✅ Insights: funnel, rates, rejection pattern detection
-- ✅ Career Map kanban
-- ✅ CV editor + Claude-powered text parsing
+### P0 — Foundation Cohesion ✅
+- Synced uploaded Career OS codebase into `/app` (env preserved).
+- Fixed 5 blocking import / syntax / scope bugs (`routes_cv`, `routes_interview`,
+  `server.py`, `db.py`, `llm_service.py`).
+- Added orchestration core (event_bus, memory_service, orchestrator,
+  routes_orchestrator).
+- GDPR/legal surfaces: CookieConsent banner (WCAG AAA 17.93:1 contrast) +
+  `/terms` page.
+- New Mongo indexes for `career_events`, `ai_telemetry`, `events_outbox`.
 
-### v0.2 — SaaS readiness
-- ✅ Marketing landing page at `/` + Pricing page at `/pricing`
-- ✅ Stripe checkout (one-time monthly charge) — Pro $19 / Team $49
-- ✅ Webhook handler — source of truth for plan activation
-- ✅ Billing management page + sidebar nav
+### P1 — Brain Activation ✅
+- **Migrated** `routes_decision` (match, career-roi, strategic-plan, skill-gaps)
+  to `orchestrator.run()` — every Decision Engine call now inherits unified
+  persona + scored memory + career context + telemetry + event publish.
+- **Enriched** match analysis with 4 new strategic fields:
+  `trajectory_impact`, `compensation_growth_outlook`, `skill_compounding`,
+  `risk_flags`.
+- **Wired 6 cross-feature subscribers** in `orchestrator.wire_subscribers()`:
+  - `job_rejected` → graph + `workflow_hints` for skill-gap review prompt
+  - `interview_completed` → graph
+  - `offer_received` → graph + `salary_comparison` seed
+  - `job_applied` → memory hydration
+  - `recruiter_reachout` → `interview_prep_context` pre-fill
+  - `bookmark_added` → `cv_tailor_hints` for next CV session
+- **Event-producing routes** wired in `routes_jobs` (apply / status /
+  bookmark) and `routes_emails` (classify by class).
+- **Telemetry endpoint** `/api/orchestrator/telemetry?days=N` returning
+  p50/p95 latency, success rate, by-feature/by-task breakdown, event
+  throughput, bus stats.
+- 4 new Mongo indexes: `workflow_hints`, `interview_prep_context`,
+  `cv_tailor_hints`, `salary_comparison` (all `user_id`-unique).
 
-### v0.3 — Productization
-- ✅ **Free-tier gating**: 5 AI matches/month for free; cached results don't count; Pro/Team unlimited
-- ✅ **Usage banner** (`UsageBanner.jsx`) on Jobs/Insights/JobDetail/Billing — loss-aversion CTA
-- ✅ **Quota-exceeded error panel** on JobDetail with direct Upgrade link
-- ✅ **Subscription cancel/downgrade** — `/api/billing/cancel` + confirmation modal
-- ✅ **PDF CV upload** — pypdf extraction + Claude parsing (5MB limit, image-only PDF guard)
-- ✅ **Real job ingest** — `/api/jobs/ingest` pulls live remote jobs from Remotive public API, dedupes by `source_url`, auto-extracts skills + seniority
-- ✅ **Render deployment guide** at `/app/RENDER_DEPLOY.md` + `.env.example` for both services
+## User personas (preserved from existing product)
+- Ambitious professionals job-searching strategically (primary).
+- Career switchers needing guidance + matching.
+- Remote / international workers (visa & relocation context).
+- Arab professionals targeting EU markets (i18n already present).
 
-### v0.4 — Multi-source job ingest (real production APIs)
-- ✅ **Adzuna connector** (`fetch_adzuna(country)`) — primary source. Configurable countries via `ADZUNA_COUNTRIES` env (default `es,gb`). Portugal not supported by Adzuna; Spain proxies Iberian market.
-- ✅ **Jooble connector** (`fetch_jooble(query, location)`) — secondary. Location configurable via `JOOBLE_LOCATION` env (default `Lisbon`).
-- ✅ **Remotive** kept as tertiary (remote-only).
-- ✅ `POST /api/jobs/ingest` now runs all 3 sources in priority order, returns per-source breakdown + errors. Legacy `{source:"remotive"}` flag preserves old behavior.
-- ✅ **Content-hash dedupe**: SHA1(title|company|location|source_url) — race-proof via MongoDB unique partial index `content_hash_unique`.
-- ✅ Unique indexes on startup: `jobs.content_hash`, `match_usage.user_id+month`, `payment_transactions.session_id`.
-- ✅ Frontend: ingest breakdown panel shows per-source counts, source badges on all real-job cards.
+## Core requirements (static)
+- Persistent AI memory across all features.
+- Unified intelligence layer; cross-feature handoffs.
+- Provider-resilient (Emergent + direct fallback Anthropic/OpenAI/Gemini).
+- GDPR-compliant (export, delete, consent, cookie banner, ToS, Privacy).
+- All existing features preserved (CV tailor, ATS, interview prep, salary,
+  decision engine, gamification, referrals, billing, daily digest, chrome
+  extension, multi-source job aggregation).
 
-### v0.5 — Daily digest emails + true parallel ingest
-- ✅ **`profile.daily_matches` toggle** + Profile-page UI card with switch + "Send test now" button
-- ✅ **Resend integration** (`emailer.py`) — `send_email()` with graceful no-op when `RESEND_API_KEY` blank; `render_daily_digest()` pure function returns (html, text)
-- ✅ **Daily digest pipeline** (`daily_digest.py`) — pulls top 3 unique jobs per user, 20-hour gate to prevent duplicates, excludes already-applied/decided jobs, real Resend send via `asyncio.to_thread`
-- ✅ **Cron endpoint** `POST /api/internal/run-daily-digest` with `X-Cron-Token` header auth — external cron (cron-job.org) hits this daily
-- ✅ **True parallel ingest** — `asyncio.gather()` over Adzuna×N + Jooble + Remotive. Measured: **0.6–0.8s** (was 5s sequential, 80s worst case)
-- ✅ Added `RESEND_API_KEY`, `SENDER_EMAIL`, `CRON_TOKEN`, `ADZUNA_COUNTRIES`, `JOOBLE_LOCATION` to `.env.example` and Render deploy guide
+## Prioritized backlog
+### P1 — Brain Activation (next iteration)
+- Migrate `routes_decision`, `routes_cv`, `routes_interview` to call
+  `orchestrator.run()` (replaces direct `llm_call`).
+- Circuit breaker per provider in `llm_service.py`.
+- AI telemetry dashboard (admin).
+- **Command Center Dashboard** redesign (single hero + 3 signal tiles).
+- Workflow handoffs (Job → CV Tailor prefetch match context).
+- Align direct fallback model versions with Emergent routing.
 
-## Test Results (iteration 5)
-- Backend: **13/13 passing** (100%) on iter5 notifications + parallel ingest
-- Frontend: **6/6 UI flows passing** (100%)
-- Parallel ingest verified at **0.6s** end-to-end after asyncio.gather rewrite
-- Known carryover (NOT a regression): `/api/billing/status` returns DB-cached state because Emergent Stripe proxy doesn't support `retrieve`. Webhook is source of truth.
+### P2 — Strategic Differentiation
+- Skill growth forecasting · salary trajectory forecasting.
+- Relocation / visa analyzer.
+- Onboarding redesign (4-step ritual to aha).
+- Habit loops + re-engagement emails.
+- Stripe paywall timing experiments.
 
-## Backlog (P1 / P2)
-- P1: Plan-aware feature gating beyond match limit (e.g., AI Coach memory only for Pro)
-- P1: Strategy Switching Engine — auto-pivot when interview rate drops
-- P1: Decision Replay — log predictions vs outcomes, fine-tune ranking over time
-- P2: Playwright connectors for Indeed/LinkedIn (Remotive covers remote jobs; geo-specific roles need scrapers)
-- P2: Gmail OAuth ingestion (data contracts already Gmail-shaped)
-- P2: Embeddings-based vector match (currently skill-overlap + Claude reasoning)
-- P2: Email digest via Resend
-- P2: GDPR data export/delete
+### P3 — Defensibility & Scale
+- Vector memory (Mongo Atlas vector / Pinecone).
+- AI golden-set regression suite.
+- Playwright E2E + GitHub Actions CI.
+- Per-IP rate limiting (slowapi).
+- Backup runbook.
 
-## Test Credentials
-See `/app/memory/test_credentials.md` — Bearer `test_session_career_os` (user_testseed01).
+## Validation / smoke tests done
+- `GET /health` → 200, db connected.
+- `GET /api/` → 200.
+- `GET /api/orchestrator/health` → 200, 3 subscribers wired, Emergent provider OK.
+- Frontend builds, Landing renders.
+- `/terms` page renders with `data-testid="terms-page-title"`.
+- Cookie banner mounts globally (`data-testid="cookie-consent-banner"`).
+- Backend lint: clean for new modules (`event_bus`, `orchestrator`,
+  `memory_service`).
+- Frontend lint: clean for new components.
 
-## Deployment
-- ✅ Native Emergent: ready (`deployment_agent` PASS in iteration 1)
-- ✅ Render: complete guide at `/app/RENDER_DEPLOY.md` — note OAuth host caveat
+## Next tasks (immediate)
+1. Run testing agent to validate orchestrator endpoints + cookie consent +
+   terms page + GDPR endpoints end-to-end.
+2. Begin P1 migration of `routes_decision` to call `orchestrator.run()`.

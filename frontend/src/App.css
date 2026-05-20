@@ -5,3 +5,98 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
+
+/* ── Mobile Polish ──────────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Typography scale-down */
+  h1.font-display { font-size: 1.875rem !important; }
+  h2.font-display { font-size: 1.5rem   !important; }
+
+  /* Full-width buttons on mobile */
+  .mobile-full { width: 100% !important; }
+
+  /* Sidebar hidden by default — Layout.jsx handles toggle */
+  .sidebar-mobile-hidden { display: none; }
+
+  /* Cards full width */
+  .card-soft { border-radius: 0.75rem; }
+
+  /* Pagination: numbers hidden, prev/next only */
+  .pagination-numbers { display: none !important; }
+
+  /* Stats grid 2 cols on mobile */
+  .stats-grid { grid-template-columns: 1fr 1fr !important; }
+
+  /* Notifications drawer full width */
+  [data-testid="notifications-drawer"] {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-height: 60vh !important;
+    top: auto !important;
+    border-radius: 1rem 1rem 0 0 !important;
+  }
+
+  /* Table scroll */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Input font-size prevents zoom on iOS */
+  input, select, textarea { font-size: 16px !important; }
+
+  /* Tabs scroll horizontally */
+  .tabs-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tabs-scroll::-webkit-scrollbar { display: none; }
+}
+
+/* ── RTL Support (Arabic) ───────────────────────────────────── */
+[dir="rtl"] {
+  text-align: right;
+}
+[dir="rtl"] .sidebar { border-left: 1px solid #27272a; border-right: none; }
+[dir="rtl"] .ms-auto  { margin-left: unset; margin-right: auto; }
+[dir="rtl"] .me-auto  { margin-right: unset; margin-left: auto; }
+[dir="rtl"] .ps-3     { padding-left: unset;  padding-right: 0.75rem; }
+[dir="rtl"] .pe-3     { padding-right: unset; padding-left: 0.75rem;  }
+[dir="rtl"] nav a span { margin-right: unset; margin-left: 0; }
+
+/* ── Quota exceeded banner ──────────────────────────────────── */
+.quota-banner {
+  background: linear-gradient(90deg, #422006, #431407);
+  border: 1px solid #92400e;
+  border-radius: 0.75rem;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: #fde68a;
+}
+.quota-banner a {
+  color: #fbbf24;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.quota-banner a:hover { text-decoration: underline; }
+
+/* ── Loading shimmer ────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, #18181b 25%, #27272a 50%, #18181b 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+
+/* ── Focus ring ─────────────────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid #52525b;
+  outline-offset: 2px;
+}

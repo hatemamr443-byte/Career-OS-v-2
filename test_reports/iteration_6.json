@@ -1,0 +1,44 @@
+{
+  "summary": "Iter 6 evolutionary upgrade testing — orchestrator + GDPR + cookie consent + Terms page. Backend: 12/13 pass (the 1 failure is /health via public URL which is by design — ingress only routes /api/* to backend). Orchestrator health returns ok=true with 3 bus subscribers wired and emergent LLM provider='ok'. All 5 new auth-protected endpoints return 401 unauth. Legacy routes (auth/me, jobs, decision/wellbeing-check, decision/skill-gaps) all mount correctly (no 404). Frontend: Landing page renders 21 data-testid markers, cookie banner appears on first visit with privacy + terms links, reject/accept both dismiss banner and persist to localStorage key 'careeros.cookieConsent.v1', dismissal persists across reload. Terms page h1='Terms of Service' with correct testid. ONE CRITICAL UI BUG: cookie consent buttons have near-invisible text due to color contrast.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/health (public URL)", "issue": "Returns frontend SPA HTML instead of JSON when accessed via REACT_APP_BACKEND_URL because ingress only routes /api/* to backend. Internal localhost:8001/health works fine and returns 200 with db=connected. This is by k8s ingress design — Render healthcheck uses internal endpoint. Not a bug, but worth documenting."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "CookieConsent", "issue": "CRITICAL CONTRAST BUG — 'Accept all' button computed color=rgb(10,10,11) on bg=rgb(23,23,23) → contrast ratio ~1.04:1, text essentially invisible. 'Essential only' button has color=rgb(250,250,250) on transparent bg sitting over a light/white banner card → also invisible. Both primary CTA buttons in the cookie banner are unreadable. Confirmed in screenshot — buttons appear blank. Likely a dark/light theme color-token mismatch in /app/frontend/src/components/CookieConsent.jsx", "selector": "[data-testid='cookie-consent-accept-btn'], [data-testid='cookie-consent-reject-btn']", "priority": "HIGH"}
+    ],
+    "integration_issues": [
+      {"flow": "auth check on landing", "issue": "Anonymous landing page fires GET /api/auth/me which returns 401 (expected) but logs 'auth check failed: AxiosError' to console 4×. Should silently treat 401 as 'not logged in' without console.error spam.", "affected_selectors": ["console"]}
+    ],
+    "design_issues": [
+      {"screen": "Cookie consent banner", "issues": ["Button text invisible due to contrast — see ui_bugs above", "Banner CTAs are the most important touchpoint for GDPR compliance; users currently cannot read button labels"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter6_orchestrator_gdpr.py",
+    "/app/test_reports/pytest/iter6_results.xml"
+  ],
+  "action_items": [
+    "Fix CookieConsent.jsx button color tokens — Accept all button needs light text on dark bg (e.g., text-white on bg-neutral-900) and Essential only needs dark text on white bg (e.g., text-neutral-900). Currently both buttons render with same-colored text and background.",
+    "Suppress console.error for anonymous /api/auth/me 401 — treat 401 as logged-out state, not an error.",
+    "(Optional) Document that /health is intentionally only reachable internally; add /api/health alias if external monitoring is desired."
+  ],
+  "critical_code_review_comments": [
+    "server.py: clean router wiring, indexes created idempotently on startup, orchestrator subscribers wired in try/except — good.",
+    "routes_orchestrator.py: health endpoint exposes bus stats + LLM probe — useful for ops. recent-events and memory both correctly require auth via Depends(get_current_user).",
+    "routes_gdpr.py: solid Article 17/20 implementation with ZIP export, background-task deletion, anonymisation of profile. Sensitive tokens (google_token, gmail_refresh_token) correctly excluded from export.",
+    "PATCH /api/me/consent requires auth (returns 401 unauthenticated) — per request asked whether it accepts unauth gracefully OR returns 401. Confirmed: returns 401, which is appropriate.",
+    "CookieConsent.jsx: data-testid attributes are well placed but button color scheme needs review (see UI bug)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "92% (12/13, 1 by-design failure)", "frontend": "85% (functional flows all pass, 1 critical contrast bug)"},
+  "test_credentials": "No static creds — auth is Emergent Google OAuth. 401 behavior verified without auth as instructed.",
+  "seed_data_creation": "None",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All new iter-6 endpoints work. Public /health returns frontend HTML (k8s ingress only routes /api/*) — use /api/ for external healthcheck or test /health via localhost:8001. Cookie banner has functional logic but visual contrast bug on both buttons — text is invisible. localStorage key is 'careeros.cookieConsent.v1'. Banner reject persists {essential:true, others:false}; accept persists all true. Console logs noisy from anonymous /api/auth/me 401 errors — suppress or silence.",
+  "rca_of_the_issue": "Cookie consent button contrast: computed styles show Accept all = color rgb(10,10,11) on bg rgb(23,23,23) (near-black on near-black) and Essential only = rgb(250,250,250) text on transparent bg sitting on a white banner card → both unreadable. Root cause likely Tailwind class mismatch — e.g., applying 'text-foreground' / 'bg-background' tokens from a dark-mode theme while the banner card is rendered with light theme tokens. Fix: explicitly set 'bg-neutral-900 text-white' for accept and 'bg-white text-neutral-900 border' for reject in /app/frontend/src/components/CookieConsent.jsx."
+}

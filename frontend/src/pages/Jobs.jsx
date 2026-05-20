@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { api } from "../lib/api";
 import { Link } from "react-router-dom";
-import { MagnifyingGlass, MapPin, Briefcase, ArrowRight } from "@phosphor-icons/react";
+import { MagnifyingGlass, MapPin, Briefcase, ArrowRight, CaretLeft, CaretRight, BookmarkSimple } from "@phosphor-icons/react";
 import UsageBanner from "../components/UsageBanner";
 
 export default function Jobs() {
@@ -11,17 +11,21 @@ export default function Jobs() {
     const [loading, setLoading] = useState(true);
     const [ingesting, setIngesting] = useState(false);
     const [ingestResult, setIngestResult] = useState(null);
+    const [page, setPage] = useState(1);
+    const [pagination, setPagination] = useState(null);
+    const [bookmarked, setBookmarked] = useState(new Set());
 
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const r = await api.get(`/jobs`, { params: { q: q || undefined, remote_only: remoteOnly } });
+            const r = await api.get(`/jobs`, { params: { q: q || undefined, remote_only: remoteOnly, page, size: 20 } });
             setJobs(r.data.jobs || []);
+            setPagination(r.data.pagination || null);
         } catch (err) {
             console.error("jobs load failed:", err);
         }
         setLoading(false);
-    }, [q, remoteOnly]);
+    }, [q, remoteOnly, page]);
 
     const ingest = async () => {
         setIngesting(true);
@@ -29,6 +33,7 @@ export default function Jobs() {
         try {
             const r = await api.post("/jobs/ingest", { query: q || "engineering", limit: 15 });
             setIngestResult(r.data);
+            setPage(1);
             await load();
         } catch (err) {
             console.error("ingest failed:", err);
@@ -37,9 +42,29 @@ export default function Jobs() {
         setIngesting(false);
     };
 
+    const toggleBookmark = async (jobId, e) => {
+        e.preventDefault();
+        try {
+            if (bookmarked.has(jobId)) {
+                await api.delete(`/bookmarks/${jobId}`);
+                setBookmarked(b => { const n = new Set(b); n.delete(jobId); return n; });
+            } else {
+                await api.post(`/bookmarks/${jobId}`);
+                setBookmarked(b => new Set([...b, jobId]));
+            }
+        } catch {}
+    };
+
     useEffect(() => {
         load();
-    }, [remoteOnly, load]);
+    }, [remoteOnly, page, load]);
+
+    // Reset page on search
+    const handleSearch = (e) => {
+        e.preventDefault();
+        setPage(1);
+        load();
+    };
 
     return (
         <div className="px-8 py-8 max-w-7xl mx-auto" data-testid="jobs-page">
@@ -144,12 +169,70 @@ export default function Jobs() {
                                     <span key={s} className="text-[10px] font-mono-ui px-2 py-0.5 bg-zinc-900 border border-zinc-800 rounded text-zinc-400">{s}</span>
                                 ))}
                             </div>
-                            <div className="mt-4 flex items-center justify-end text-xs text-zinc-400 group-hover:text-zinc-100 transition-colors">
-                                Open analysis <ArrowRight size={12} className="ml-1" />
+                            <div className="mt-4 flex items-center justify-between">
+                                <button
+                                    onClick={(e) => toggleBookmark(j.job_id, e)}
+                                    className={`flex items-center gap-1 text-xs transition-colors ${bookmarked.has(j.job_id) ? "text-yellow-400" : "text-zinc-600 hover:text-zinc-300"}`}
+                                    title={bookmarked.has(j.job_id) ? "Remove bookmark" : "Bookmark"}
+                                >
+                                    <BookmarkSimple size={14} weight={bookmarked.has(j.job_id) ? "fill" : "regular"} />
+                                    {bookmarked.has(j.job_id) ? "Saved" : "Save"}
+                                </button>
+                                <div className="flex items-center text-xs text-zinc-400 group-hover:text-zinc-100 transition-colors">
+                                    Open analysis <ArrowRight size={12} className="ml-1" />
+                                </div>
                             </div>
                         </Link>
                     ))}
                 </div>
+            )}
+
+            {/* Pagination */}
+            {pagination && pagination.pages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-8 pb-8">
+                    <button
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={!pagination.has_prev}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:border-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                        <CaretLeft size={14} />
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                        {Array.from({ length: Math.min(pagination.pages, 7) }, (_, i) => {
+                            const p = i + 1;
+                            return (
+                                <button
+                                    key={p}
+                                    onClick={() => setPage(p)}
+                                    className={`w-8 h-8 rounded-lg font-mono-ui text-sm transition-colors ${
+                                        p === page
+                                            ? "bg-zinc-50 text-black font-medium"
+                                            : "text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800"
+                                    }`}
+                                >
+                                    {p}
+                                </button>
+                            );
+                        })}
+                        {pagination.pages > 7 && (
+                            <span className="text-zinc-600 text-sm px-2">… {pagination.pages}</span>
+                        )}
+                    </div>
+
+                    <button
+                        onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
+                        disabled={!pagination.has_next}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:border-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                        <CaretRight size={14} />
+                    </button>
+                </div>
+            )}
+            {pagination && (
+                <p className="text-center text-xs text-zinc-600 pb-4">
+                    {pagination.total} jobs · page {pagination.page} of {pagination.pages}
+                </p>
             )}
         </div>
     );

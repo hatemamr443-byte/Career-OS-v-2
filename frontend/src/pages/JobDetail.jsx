@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { ArrowLeft, MapPin, Briefcase, CheckCircle, XCircle, Warning, Sparkle, Circle } from "@phosphor-icons/react";
@@ -235,8 +235,48 @@ export default function JobDetail() {
                             </div>
                         </div>
                     )}
+
+                    {/* Notes Autosave */}
+                    {application && <NotesPanel applicationId={application.application_id} initial={application.notes} />}
                 </div>
             </div>
+        </div>
+    );
+}
+
+function NotesPanel({ applicationId, initial }) {
+    const [notes, setNotes] = useState(initial || "");
+    const [saved, setSaved] = useState(true);
+    const timerRef = React.useRef(null);
+
+    const handleChange = (val) => {
+        setNotes(val);
+        setSaved(false);
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(async () => {
+            try {
+                await api.patch(`/applications/${applicationId}/notes`, { notes: val });
+                setSaved(true);
+            } catch {}
+        }, 1000);
+    };
+
+    return (
+        <div className="card-soft p-5" data-testid="notes-panel">
+            <div className="flex items-center justify-between mb-3">
+                <div className="overline">Notes</div>
+                <span className="text-xs text-zinc-600">
+                    {saved ? "Saved ✓" : "Saving…"}
+                </span>
+            </div>
+            <textarea
+                value={notes}
+                onChange={e => handleChange(e.target.value)}
+                placeholder="Add notes about this application…"
+                className="w-full h-28 bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3
+                           text-sm text-zinc-200 placeholder:text-zinc-600 resize-none
+                           focus:outline-none focus:border-zinc-700 transition-colors"
+            />
         </div>
     );
 }

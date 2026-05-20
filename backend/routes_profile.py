@@ -27,6 +27,13 @@ async def update_profile(payload: dict, user=Depends(get_current_user)):
         {"$set": payload, "$setOnInsert": {"user_id": user["user_id"]}},
         upsert=True,
     )
+    # Log activity
+    try:
+        from routes_activity import log_activity
+        await log_activity(user["user_id"], "profile_updated", "Profile updated",
+                           "Profile information was updated", {"fields": list(payload.keys())})
+    except Exception:
+        pass
     p = await profiles.find_one({"user_id": user["user_id"]}, {"_id": 0})
     return p
 

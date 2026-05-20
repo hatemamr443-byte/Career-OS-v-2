@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="13" time="4.246" timestamp="2026-05-19T13:07:24.641824+00:00" hostname="agent-env-6ed33986-3aed-4115-b52a-ded9f8272fb1"><testcase classname="backend.tests.test_iter6_orchestrator_gdpr" name="test_health_root" time="0.157"><failure message="requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)">/root/.venv/lib/python3.11/site-packages/requests/models.py:1117: in json
+    return complexjson.loads(self.text, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/json/__init__.py:346: in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/json/decoder.py:337: in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/json/decoder.py:355: in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+E   json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+During handling of the above exception, another exception occurred:
+backend/tests/test_iter6_orchestrator_gdpr.py:12: in test_health_root
+    j = r.json()
+        ^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/requests/models.py:1121: in json
+    raise RequestsJSONDecodeError(e.msg, e.doc, e.pos)
+E   requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)</failure></testcase><testcase classname="backend.tests.test_iter6_orchestrator_gdpr" name="test_api_root" time="0.142" /><testcase classname="backend.tests.test_iter6_orchestrator_gdpr" name="test_orchestrator_health" time="2.408" /><testcase classname="backend.tests.test_iter6_orchestrator_gdpr" name="test_orchestrator_recent_events_requires_auth" time="0.204" /><testcase classname="backend.tests.test_iter6_orchestrator_gdpr" name="test_orchestrator_memory_requires_auth" time="0.122" /><testcase classname="backend.tests.test_iter6_orchestrator_gdpr" name="test_gdpr_data_summary_requires_auth" time="0.205" /><testcase classname="backend.tests.test_iter6_orchestrator_gdpr" name="test_gdpr_export_requires_auth" time="0.117" /><testcase classname="backend.tests.test_iter6_orchestrator_gdpr" name="test_gdpr_delete_account_requires_auth" time="0.156" /><testcase classname="backend.tests.test_iter6_orchestrator_gdpr" name="test_gdpr_consent_unauth_behavior" time="0.185" /><testcase classname="backend.tests.test_iter6_orchestrator_gdpr" name="test_legacy_routes_mounted[/api/auth/me-GET]" time="0.110" /><testcase classname="backend.tests.test_iter6_orchestrator_gdpr" name="test_legacy_routes_mounted[/api/jobs-GET]" time="0.114" /><testcase classname="backend.tests.test_iter6_orchestrator_gdpr" name="test_legacy_routes_mounted[/api/decision/wellbeing-check-GET]" time="0.099" /><testcase classname="backend.tests.test_iter6_orchestrator_gdpr" name="test_legacy_routes_mounted[/api/decision/skill-gaps-GET]" time="0.116" /></testsuite></testsuites>

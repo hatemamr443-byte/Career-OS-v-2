@@ -3,6 +3,10 @@ import { api } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 import { Check, ArrowRight, Sparkle, FlameIcon, TrendUp, Lightning } from "@phosphor-icons/react";
+import ActivityFeed from "../components/ActivityFeed";
+import ProfileCompleteness from "../components/ProfileCompleteness";
+import OnboardingWidget from "../components/OnboardingWidget";
+import BrainReveal from "../components/BrainReveal";
 
 const ACTION_LABELS = {
     apply: "Apply",
@@ -78,6 +82,9 @@ export default function Dashboard() {
                     Browse Jobs <ArrowRight size={14} />
                 </Link>
             </div>
+
+            {/* Brain Reveal — thin orchestration surface (renders nothing when empty) */}
+            <BrainReveal />
 
             {/* KPI strip */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -157,33 +164,49 @@ export default function Dashboard() {
                 </div>
 
                 {/* Recommendations */}
-                <div className="card-soft p-6" data-testid="recommendations-panel">
-                    <div className="overline">Decision Engine</div>
-                    <h2 className="font-display font-bold text-2xl mt-1 mb-5">Top picks</h2>
-                    <div className="space-y-3">
-                        {recs.length === 0 && <div className="text-zinc-500 text-sm">No recommendations yet.</div>}
-                        {recs.map((j) => (
-                            <Link
-                                key={j.job_id}
-                                to={`/jobs/${j.job_id}`}
-                                data-testid={`rec-${j.job_id}`}
-                                className="block p-3 rounded-lg border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/40 transition-all"
-                            >
-                                <div className="flex items-start justify-between gap-3 mb-1">
-                                    <div className="font-medium text-sm leading-tight">{j.title}</div>
-                                    <div className="font-mono-ui text-sm" style={{ color: "#10B981" }}>
-                                        {j.quick_score}
+                <div className="space-y-4">
+                    {/* Onboarding */}
+                    <OnboardingWidget />
+
+                    {/* Profile Completeness */}
+                    <ProfileCompleteness />
+
+                    {/* Top picks */}
+                    <div className="card-soft p-6" data-testid="recommendations-panel">
+                        <div className="overline">Decision Engine</div>
+                        <h2 className="font-display font-bold text-2xl mt-1 mb-5">Top picks</h2>
+                        <div className="space-y-3">
+                            {recs.length === 0 && <div className="text-zinc-500 text-sm">No recommendations yet.</div>}
+                            {recs.map((j) => (
+                                <Link
+                                    key={j.job_id}
+                                    to={`/jobs/${j.job_id}`}
+                                    data-testid={`rec-${j.job_id}`}
+                                    className="block p-3 rounded-lg border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/40 transition-all"
+                                >
+                                    <div className="flex items-start justify-between gap-3 mb-1">
+                                        <div className="font-medium text-sm leading-tight">{j.title}</div>
+                                        <div className="font-mono-ui text-sm" style={{ color: "#10B981" }}>
+                                            {j.quick_score}
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="text-xs text-zinc-500 mb-2">{j.company} • {j.location}</div>
-                                <div className="text-[11px] text-zinc-400 leading-relaxed">
-                                    {j.decision?.reason}
-                                </div>
-                                <div className="mt-2 inline-flex items-center gap-1 text-[10px] font-mono-ui uppercase tracking-widest" style={{ color: j.decision?.decision === "apply" ? "#10B981" : j.decision?.decision === "consider" ? "#FBBF24" : "#71717A" }}>
-                                    {j.decision?.decision} · conf {j.decision?.confidence}
-                                </div>
-                            </Link>
-                        ))}
+                                    <div className="text-xs text-zinc-500 mb-2">{j.company} • {j.location}</div>
+                                    <div className="text-[11px] text-zinc-400 leading-relaxed">
+                                        {j.decision?.reason}
+                                    </div>
+                                    <div className="mt-2 inline-flex items-center gap-1 text-[10px] font-mono-ui uppercase tracking-widest" style={{ color: j.decision?.decision === "apply" ? "#10B981" : j.decision?.decision === "consider" ? "#FBBF24" : "#71717A" }}>
+                                        {j.decision?.decision} · conf {j.decision?.confidence}
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Activity Feed */}
+                    <div className="card-soft p-5" data-testid="activity-panel">
+                        <div className="overline mb-1">Recent Activity</div>
+                        <h2 className="font-display font-bold text-lg mb-4">Your history</h2>
+                        <ActivityFeed limit={8} />
                     </div>
                 </div>
             </div>

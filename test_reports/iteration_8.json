@@ -1,0 +1,81 @@
+{
+  "summary": "Iter 8 — P1 Brain Activation backend tests. All 13 backend tests PASS. /api/orchestrator/health confirmed with all 6 subscribers wired (job_rejected, interview_completed, offer_received, job_applied, recruiter_reachout, bookmark_added — each count=1). Emergent LLM provider OK and any_available=true. /api/orchestrator/telemetry, /memory, /recent-events properly require auth (401). All 5 /api/decision/* routes mount correctly and enforce auth via Depends(get_current_user). Existing routes (/api/applications POST+PATCH, /api/bookmarks/{job_id}, /api/emails/{id}/classify) still mount and enforce auth (no route regression after event publish wiring). Backend startup logs are clean — no exceptions from event_bus or wire_subscribers; all 6 subscribers register successfully on each reload. Telemetry endpoint shape verified by code review matches the requested schema: window_days, total_ai_calls, success_rate, latency_ms{p50,p95,max}, by_feature, by_task, event_throughput, bus_global.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verification_results": {
+    "orchestrator_health": {
+      "endpoint": "/api/orchestrator/health",
+      "ok": true,
+      "bus_subscribers": {
+        "job_rejected": 1, "interview_completed": 1, "offer_received": 1,
+        "job_applied": 1, "recruiter_reachout": 1, "bookmark_added": 1
+      },
+      "bus_published": 0,
+      "bus_failures": 0,
+      "llm_providers": {"emergent": "ok"},
+      "llm_any_available": true,
+      "status": "PASS"
+    },
+    "orchestrator_auth_gates": {
+      "telemetry_401": true,
+      "memory_401": true,
+      "recent_events_401": true,
+      "status": "PASS"
+    },
+    "decision_routes_auth_gates": {
+      "match_post_401": true,
+      "career_roi_post_401": true,
+      "strategic_plan_get_401": true,
+      "wellbeing_check_get_401": true,
+      "skill_gaps_get_401": true,
+      "status": "PASS"
+    },
+    "existing_routes_still_mount": {
+      "applications_post_401": true,
+      "applications_patch_401": true,
+      "bookmarks_post_401": true,
+      "email_classify_post_401": true,
+      "status": "PASS"
+    },
+    "telemetry_shape_code_review": {
+      "fields_present": ["window_days", "total_ai_calls", "success_rate", "latency_ms.p50", "latency_ms.p95", "latency_ms.max", "by_feature", "by_task", "event_throughput", "bus_global"],
+      "empty_dataset_handling": "returns zeros for total_ai_calls, success_rate=0.0, latencies={p50:0,p95:0,max:0} — verified by reading routes_orchestrator.py",
+      "status": "PASS"
+    },
+    "backend_startup_logs": {
+      "all_6_subscribers_logged": true,
+      "exceptions_in_recent_logs": false,
+      "status": "PASS"
+    }
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter8_p1_brain.py",
+    "/app/test_reports/pytest/iter8_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "orchestrator.py wire_subscribers() correctly registers all 6 subscribers. Subscribers write to dedicated Mongo collections (workflow_hints, salary_comparison, interview_prep_context, cv_tailor_hints) and call CareerIntelligence.record_event(). Idempotency relies on event_bus.subscribe() being deduplicated — verify event_bus.subscribe handles duplicate registration safely (subscribers count should stay at 1 on repeated startup reloads, which logs confirm).",
+    "on_job_applied handler is effectively a no-op (the conditional `if False else None` short-circuits the insert because career_events is already written by bus.publish). The comment explains this is intentional; consider removing the dead code for clarity in a future cleanup.",
+    "routes_decision.py — decision_match references `decisions` collection via mongo_db.decisions but no index is created on (user_id, job_id) for the upsert. Add an index to keep this performant as it scales.",
+    "routes_orchestrator.py telemetry uses ISO-string comparison for created_at ($gte: since). This works because timestamps are stored as ISO strings throughout the codebase, but it's fragile if any insertion path stores BSON Date. Confirmed all writes in orchestrator.py / event_bus / subscribers use .isoformat() → consistent.",
+    "routes_decision.py strategic_career_plan and skill_gap_analysis call ci.cross_feature_signals() but don't catch its failure. If that helper throws, the endpoint 500s before reaching orchestrator.run. Consider try/except around the signal fetch for graceful degradation.",
+    "Telemetry endpoint exposes per-user data only (filtered by uid). Good privacy posture. bus_global is shared/global which is acceptable for diagnostic purposes."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter8_p1_brain.py (new)"
+  ],
+  "success_rate": {"backend": "100% (13/13 tests pass)", "frontend": "not tested (backend-only request)"},
+  "test_credentials": "No static creds — Emergent OAuth. Auth-gated endpoints verified via 401 path only, per request directive.",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "P1 Brain Activation backend pieces are verified: 6 event subscribers wired, telemetry endpoint live, all 5 migrated /api/decision/* routes mount and require auth, event-publishing routes (applications/bookmarks/email-classify) unchanged in mount/auth behavior. Tests in /app/backend/tests/test_iter8_p1_brain.py are non-destructive and can be re-run anytime. Authenticated end-to-end telemetry data validation (with real LLM calls populating ai_telemetry) was NOT exercised here per request — main agent already manually verified that path. Frontend was not retested this iteration (backend-only request).",
+  "rca_of_the_issue": "N/A — no failures observed."
+}

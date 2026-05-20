@@ -1,0 +1,65 @@
+{
+  "manifest_version": 3,
+  "name": "Career OS — Job Tracker",
+  "version": "1.0.0",
+  "description": "Save any job from LinkedIn, Indeed, Glassdoor, or any site to Career OS in one click.",
+
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "notifications"
+  ],
+
+  "host_permissions": [
+    "https://www.linkedin.com/*",
+    "https://www.indeed.com/*",
+    "https://pt.indeed.com/*",
+    "https://www.glassdoor.com/*",
+    "https://weworkremotely.com/*",
+    "https://remoteok.com/*",
+    "https://www.net-empregos.com/*",
+    "https://*.greenhouse.io/*",
+    "https://*.lever.co/*",
+    "https://*.workable.com/*"
+  ],
+
+  "background": {
+    "service_worker": "src/background.js"
+  },
+
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.linkedin.com/jobs/*",
+        "https://www.indeed.com/viewjob*",
+        "https://pt.indeed.com/viewjob*",
+        "https://www.glassdoor.com/job-listing/*",
+        "https://*.greenhouse.io/jobs/*",
+        "https://*.lever.co/*",
+        "https://*.workable.com/j/*"
+      ],
+      "js": ["src/content.js"],
+      "css": ["src/content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Career OS",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

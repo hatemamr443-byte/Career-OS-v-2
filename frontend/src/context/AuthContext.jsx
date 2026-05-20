@@ -12,7 +12,11 @@ export function AuthProvider({ children }) {
             const r = await api.get("/auth/me");
             setUser(r.data);
         } catch (err) {
-            console.error("auth check failed:", err);
+            // 401 is the expected "not logged in" state — don't pollute the console
+            const status = err?.response?.status;
+            if (status && status !== 401) {
+                console.error("auth check failed:", err);
+            }
             setUser(null);
         } finally {
             setLoading(false);

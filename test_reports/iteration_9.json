@@ -1,0 +1,64 @@
+{
+  "summary": "Iter 9 — Brain Reveal layer (P0+P1 additive). 16/16 backend pytest tests PASS. Frontend regression smoke: landing, /terms, /dashboard (unauth redirect), cookie consent all clean. Critically: data-testid='brain-reveal-strip' correctly does NOT render on unauthenticated landing, /terms, or unauth /dashboard — confirming `loading || !items.length` guard returns null cleanly. No console errors beyond expected 401s from auth-gated API calls after /dashboard redirect. Insight shape verified statically via insights_service._shape() — emits id, kind, headline, detail, source_signals(list), confidence(0-100), tone(neutral|positive|caution), suggested_action{label,route}, dismissible, created_at. MAX_INSIGHTS == 5. Orchestrator health still returns all 6 subscribers wired. Decision and legacy routes still mount and enforce 401 unauth.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "verification_results": {
+    "insights_auth_gates": {
+      "GET_/api/orchestrator/insights_401": true,
+      "GET_with_invalid_token_401": true,
+      "POST_/api/orchestrator/insights/{id}/dismiss_401": true,
+      "POST_url_encoded_colon_id_401": true,
+      "status": "PASS"
+    },
+    "orchestrator_health": {
+      "ok": true,
+      "subscribers_present": ["job_rejected","interview_completed","offer_received","job_applied","recruiter_reachout","bookmark_added"],
+      "status": "PASS"
+    },
+    "decision_routes_auth": {"all_5_routes_401_unauth": true, "status": "PASS"},
+    "legacy_routes_auth": {
+      "jobs_get_200_or_401": true,
+      "applications_get_401": true,
+      "applications_post_401": true,
+      "emails_get_401": true,
+      "status": "PASS"
+    },
+    "insight_shape_static": {
+      "required_keys_emitted": ["id","kind","headline","detail","source_signals","confidence","tone","suggested_action","dismissible","created_at"],
+      "tone_clamped_to_set": true,
+      "confidence_clamped_0_100": true,
+      "MAX_INSIGHTS": 5,
+      "status": "PASS"
+    },
+    "frontend_smoke": {
+      "landing_loads_no_errors": true,
+      "terms_page_renders": true,
+      "dashboard_unauth_redirects_to_landing": true,
+      "brain_reveal_strip_hidden_when_no_insights": true,
+      "cookie_consent_banner_visible_with_contrast": true,
+      "console_errors_only_expected_401s": true,
+      "status": "PASS"
+    }
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter9_brain_reveal.py",
+    "/app/test_reports/pytest/iter9_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "insights_service._is_dismissed() projects {'_id':0,'_id_exists':1} which is invalid Mongo projection syntax — Mongo will reject mixing inclusion+exclusion (other than _id). The function is never called (replaced by _all_dismissed which is correct). Recommend deleting _is_dismissed() to avoid future foot-gun.",
+    "build_insights() loops `async for sc in mongo_db.salary_comparison.find(...)` and then appends without enforcing MAX_INSIGHTS inside the loop. With many sources, the function only caps via final slice insights[:5]. That's fine functionally but does extra Mongo round-trips on heavy users. Consider an early `if len(insights) >= MAX_INSIGHTS: break` after each append.",
+    "BrainReveal.jsx silently swallows non-401 errors with console.warn — good defensive posture for a passive surface. Dismiss is optimistic with no rollback on failure, which matches the spec (user already saw card disappear) but means a dismiss API outage results in card reappearing on next load — acceptable.",
+    "interview_prep_context insight uses ipc.get('from_addr','?') in the id; if from_addr is missing the id becomes 'interview_prep:?' which collides across recruiters. Low-risk because the orchestrator-side seeder always sets from_addr, but a guard is cheap.",
+    "Mongo index `insight_dismissals(user_id, insight_id)` unique is correctly added in server.py startup — verified.",
+    "Telemetry empty-dataset handling stays correct (no division by zero); confirmed in iter8 still passing."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter9_brain_reveal.py (new)"],
+  "success_rate": {"backend": "100% (16/16 tests pass)", "frontend": "100% (smoke checks pass)"},
+  "test_credentials": "Emergent OAuth — 401 path verified per request. No authenticated end-to-end run executed (matches main agent's prior manual seed-and-verify).",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Brain Reveal layer additive surface is verified. Backend: GET /api/orchestrator/insights and POST /api/orchestrator/insights/{id}/dismiss both 401 unauth; shape emitter (_shape) and MAX_INSIGHTS=5 statically validated. Frontend: BrainReveal returns null cleanly when items empty and is correctly absent on landing/terms/unauth-dashboard. Tests in /app/backend/tests/test_iter9_brain_reveal.py are non-destructive (no auth required, only public-status assertions). Iter8 tests still relevant for orchestrator/health and decision routes.",
+  "rca_of_the_issue": "N/A — no failures. One test was initially failing (decision/match expected /api/decision/match but actual route is POST /api/decision/match/{job_id}); test was corrected, not a product bug."
+}

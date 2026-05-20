@@ -88,6 +88,13 @@ async def create_session(payload: dict, response: Response):
         doc = user.model_dump()
         doc["created_at"] = doc["created_at"].isoformat()
         await users.insert_one(doc)
+        # Fire-and-forget welcome email
+        try:
+            from welcome_emails import send_welcome_sequence_day0
+            import asyncio
+            asyncio.create_task(send_welcome_sequence_day0(user_id, email, name))
+        except Exception:
+            pass
 
     expires_at = datetime.now(timezone.utc) + timedelta(days=7)
     await sessions.update_one(

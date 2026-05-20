@@ -1,126 +1,70 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# ─── Secrets & Environment ───────────────────────────────────
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
 
-# IDE and editors
-.idea/
-.vscode/
+# ─── Encrypted backups (kept outside repo entirely) ──────────
+/secure-backup/
+secure-backup/
+*.enc
+BACKUP_PASSWORD.txt
 
-# Dependencies
-node_modules/
-/node_modules
-/.pnp
-.pnp.js
-.yarn/install-state.gz
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# Testing
-/coverage
-
-# Next.js
-/.next/
-/out/
-next-env.d.ts
-*.tsbuildinfo
-
-# Production builds
-/build
+# ─── Python ──────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
 dist/
-dist
+build/
+.venv/
+venv/
+env/
+.python-version
 
-# Environment files (comprehensive coverage)
-
-*token.json*
-*credentials.json*
-
-# Logs and debug files
+# ─── Node / React ────────────────────────────────────────────
+node_modules/
+frontend/build/
+frontend/dist/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
-dump.rdb
+.npm/
+.yarn/cache
+.yarn/unplugged
+.pnp.*
 
-# System files
+# ─── OS & Editor ─────────────────────────────────────────────
 .DS_Store
-*.pem
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
 
-# Python
-__pycache__/
-*pyc*
-venv/
-.venv/
+# ─── Temporary archives ──────────────────────────────────────
+*.zip
+*.tar.gz
+*.tar
+*.bak
 
-# Development tools
-chainlit.md
-.chainlit
-.ipynb_checkpoints/
-.ac
+# ─── MongoDB ─────────────────────────────────────────────────
+*.db
+data/db/
 
-# Deployment
-.vercel
-
-# Data and databases
-agenthub/agents/youtube/db
-
-# Archive files and large assets
-**/*.zip
-**/*.tar.gz
-**/*.tar
-**/*.tgz
-*.pack
-*.deb
-*.dylib
-
-# Build caches
-.cache/
-
-memory/test_credentials.md
-
-# Mobile development
-android-sdk/-e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
+# ─── Test artifacts ──────────────────────────────────────────
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+*.log

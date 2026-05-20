@@ -164,32 +164,9 @@ async def seed_jobs_if_empty():
     await jobs.insert_many(docs)
 
 
-async def seed_user_emails(user_id: str):
-    count = await emails.count_documents({"user_id": user_id})
-    if count > 0:
-        return
-    base = datetime.now(timezone.utc)
-    docs = []
-    job_list = await jobs.find({}, {"_id": 0}).to_list(50)
-    company_to_job = {j["company"]: j["job_id"] for j in job_list}
-    for i, e in enumerate(MOCK_EMAILS):
-        docs.append({
-            "email_id": new_id("email"),
-            "user_id": user_id,
-            "thread_id": new_id("thread"),
-            "from_addr": e["from_addr"],
-            "from_name": e["from_name"],
-            "subject": e["subject"],
-            "body": e["body"],
-            "received_at": (base - timedelta(hours=i * 7)).isoformat(),
-            "classification": "other",
-            "intent": "",
-            "next_steps": [],
-            "linked_job_id": company_to_job.get(e["company"]),
-            "linked_application_id": None,
-            "is_read": False,
-        })
-    await emails.insert_many(docs)
+async def seed_user_emails(user_id: str) -> None:
+    """DISABLED — No fake recruiter emails. Real inbox comes from Gmail OAuth only."""
+    pass
 
 
 SAMPLE_CV = """Alex Rivera

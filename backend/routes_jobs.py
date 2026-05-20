@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 from datetime import datetime, timezone
-from db import jobs, applications, profiles, decisions
+from db import jobs, applications, profiles, decisions, bookmarks
 from models import new_id, Application
 from auth import get_current_user
 from llm_service import llm_call, parse_json_loose
@@ -16,6 +16,15 @@ from quota import (
 )
 
 router = APIRouter(prefix="/api", tags=["jobs"])
+
+
+async def _log(user_id: str, event_type: str, title: str, description: str, metadata: dict | None = None):
+    """Fire-and-forget activity log helper."""
+    try:
+        from routes_activity import log_activity
+        await log_activity(user_id, event_type, title, description, metadata)
+    except Exception:
+        pass
 
 
 def _skill_overlap_score(cv_skills: list, job_skills: list) -> int:
@@ -32,7 +41,8 @@ async def list_jobs(
     user=Depends(get_current_user),
     q: Optional[str] = None,
     remote_only: bool = False,
-    limit: int = 50,
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
 ):
     query = {}
     if remote_only:
@@ -43,13 +53,23 @@ async def list_jobs(
             {"company": {"$regex": q, "$options": "i"}},
             {"description": {"$regex": q, "$options": "i"}},
         ]
-    docs = await jobs.find(query, {"_id": 0}).limit(limit).to_list(limit)
+    total = await jobs.count_documents(query)
+    skip = (page - 1) * size
+    docs = await jobs.find(query, {"_id": 0}).skip(skip).limit(size).to_list(size)
     profile = await profiles.find_one({"user_id": user["user_id"]}, {"_id": 0})
     cv_skills = profile.get("skills", []) if profile else []
     for d in docs:
         d["quick_score"] = _skill_overlap_score(cv_skills, d.get("skills_required", []))
     docs.sort(key=lambda x: -x["quick_score"])
-    return {"jobs": docs, "count": len(docs)}
+    pages = max(1, (total + size - 1) // size)
+    return {
+        "jobs": docs,
+        "count": len(docs),
+        "pagination": {
+            "page": page, "size": size, "total": total,
+            "pages": pages, "has_next": page < pages, "has_prev": page > 1,
+        },
+    }
 
 
 @router.get("/jobs/{job_id}")
@@ -231,6 +251,21 @@ async def create_application(payload: dict, user=Depends(get_current_user)):
     }
     await applications.insert_one(app)
     app.pop("_id", None)
+    # Log activity
+    await _log(user["user_id"], "job_applied",
+               f"Applied to {job['title']}",
+               f"Applied to {job['title']} at {job['company']}",
+               {"job_id": job_id, "company": job["company"]})
+    # Publish into orchestration bus (fire-and-forget — never blocks the response)
+    try:
+        from event_bus import event_bus
+        await event_bus.publish("job_applied", user["user_id"], {
+            "job_id": job_id,
+            "job_title": job.get("title"),
+            "company": job.get("company"),
+        })
+    except Exception:
+        pass
     return app
 
 
@@ -257,6 +292,41 @@ async def update_application_status(
         {"application_id": application_id},
         {"$set": {"status": new_status, "timeline": timeline, "updated_at": now}},
     )
+    # Log activity + award XP for meaningful transitions
+    job_doc = await jobs.find_one({"job_id": app["job_id"]}, {"_id": 0}) or {}
+    await _log(user["user_id"], "status_changed",
+               f"Application moved to {new_status.replace('_', ' ').title()}",
+               f"{job_doc.get('title', 'Job')} at {job_doc.get('company', '?')} → {new_status}",
+               {"application_id": application_id, "old_status": app.get("status"), "new_status": new_status})
+    # Award XP via xp engine
+    xp_map = {"applied": "job_applied", "under_review": "status_under_review",
+              "interview": "status_interview", "offer": "status_offer"}
+    if new_status in xp_map:
+        try:
+            from xp import award_xp
+            await award_xp(user["user_id"], xp_map[new_status])
+        except Exception:
+            pass
+    # Publish status-change events into the orchestration bus
+    try:
+        from event_bus import event_bus
+        status_event_map = {
+            "rejected": "job_rejected",
+            "offer":    "offer_received",
+            "interview": "interview_scheduled",
+        }
+        bus_event = status_event_map.get(new_status)
+        if bus_event:
+            await event_bus.publish(bus_event, user["user_id"], {
+                "application_id": application_id,
+                "job_id":        app["job_id"],
+                "job_title":     job_doc.get("title"),
+                "company":       job_doc.get("company"),
+                "old_status":    app.get("status"),
+                "new_status":    new_status,
+            })
+    except Exception:
+        pass
     updated = await applications.find_one({"application_id": application_id}, {"_id": 0})
     return updated
 
@@ -308,3 +378,78 @@ async def smart_recommendations(user=Depends(get_current_user), limit: int = 5):
             ),
         }
     return {"recommendations": top}
+
+# ─────────────────────────────────────────────
+# BOOKMARKS
+# ─────────────────────────────────────────────
+
+@router.post("/bookmarks/{job_id}")
+async def bookmark_job(job_id: str, user=Depends(get_current_user)):
+    """Bookmark a job for later review."""
+    job = await jobs.find_one({"job_id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(404, "Job not found")
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        await bookmarks.insert_one({
+            "bookmark_id": new_id("bkm"),
+            "user_id": user["user_id"],
+            "job_id": job_id,
+            "created_at": now,
+        })
+        await _log(user["user_id"], "job_saved", f"Bookmarked {job['title']}",
+                   f"Saved {job['title']} at {job['company']}", {"job_id": job_id})
+        # Publish bookmark event (cross-feature CV-tailor pre-warm)
+        try:
+            from event_bus import event_bus
+            await event_bus.publish("bookmark_added", user["user_id"], {
+                "job_id": job_id,
+                "job_title": job.get("title"),
+                "company": job.get("company"),
+            })
+        except Exception:
+            pass
+    except Exception:
+        pass  # Duplicate — already bookmarked
+    return {"ok": True, "job_id": job_id}
+
+
+@router.delete("/bookmarks/{job_id}")
+async def remove_bookmark(job_id: str, user=Depends(get_current_user)):
+    await bookmarks.delete_one({"user_id": user["user_id"], "job_id": job_id})
+    return {"ok": True}
+
+
+@router.get("/bookmarks")
+async def list_bookmarks(user=Depends(get_current_user)):
+    docs = await bookmarks.find({"user_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    job_ids = [d["job_id"] for d in docs]
+    job_map = {}
+    if job_ids:
+        async for j in jobs.find({"job_id": {"$in": job_ids}}, {"_id": 0}):
+            job_map[j["job_id"]] = j
+    result = []
+    for d in docs:
+        if d["job_id"] in job_map:
+            result.append({**d, "job": job_map[d["job_id"]]})
+    return {"bookmarks": result, "count": len(result)}
+
+
+# ─────────────────────────────────────────────
+# APPLICATION NOTES AUTOSAVE
+# ─────────────────────────────────────────────
+
+@router.patch("/applications/{application_id}/notes")
+async def update_notes(application_id: str, payload: dict, user=Depends(get_current_user)):
+    """Autosave notes for an application."""
+    app = await applications.find_one(
+        {"application_id": application_id, "user_id": user["user_id"]}, {"_id": 0}
+    )
+    if not app:
+        raise HTTPException(404, "Application not found")
+    notes = payload.get("notes", "")
+    await applications.update_one(
+        {"application_id": application_id},
+        {"$set": {"notes": notes, "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    return {"ok": True, "notes": notes}

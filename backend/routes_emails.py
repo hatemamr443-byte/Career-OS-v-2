@@ -84,6 +84,27 @@ async def classify_email(email_id: str, user=Depends(get_current_user)):
         {"$set": {"classification": cls, "intent": intent, "next_steps": next_steps}},
     )
     e.update({"classification": cls, "intent": intent, "next_steps": next_steps})
+    # Publish classification-specific events for cross-feature orchestration
+    try:
+        from event_bus import event_bus
+        class_event_map = {
+            "recruiter": "recruiter_reachout",
+            "interview": "interview_invited",
+            "offer":     "offer_email_received",
+            "rejection": "rejection_email_received",
+        }
+        bus_event = class_event_map.get(cls)
+        if bus_event:
+            await event_bus.publish(bus_event, user["user_id"], {
+                "email_id":    email_id,
+                "from_name":   e.get("from_name"),
+                "from_addr":   e.get("from_addr"),
+                "subject":     e.get("subject"),
+                "intent":      intent,
+                "next_steps":  next_steps,
+            })
+    except Exception:
+        pass
     return e
 
 
