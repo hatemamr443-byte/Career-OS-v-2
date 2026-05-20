@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Sparkle, ArrowRight, Lightning, CheckCircle, FlameIcon, GraphIcon, EnvelopeSimple, Briefcase, ChartLine } from "@phosphor-icons/react";
+import { Sparkle, ArrowRight, Lightning, CheckCircle, Flame, Graph, EnvelopeSimple, Briefcase, ChartLine } from "@phosphor-icons/react";
 import { useAuth } from "../context/AuthContext";
 import { useEffect } from "react";
 
@@ -7,9 +7,9 @@ const FEATURES = [
     { Icon: Sparkle, title: "AI Decision Engine", body: "Claude Sonnet 4.5 ranks every job by ROI, not by keywords. Apply only when the math is on your side." },
     { Icon: Briefcase, title: "Application Lifecycle Tracker", body: "Discovered → Applied → Interview → Offer. Every transition logged with reason + confidence." },
     { Icon: EnvelopeSimple, title: "Recruiter Inbox Intelligence", body: "Gemini Flash classifies every recruiter email. Intent + next steps surfaced. No more re-reading." },
-    { Icon: FlameIcon, title: "Streak & Mission System", body: "Daily AI-generated missions that reinforce good decisions — not random clicks. Duolingo, for your career." },
+    { Icon: Flame, title: "Streak & Mission System", body: "Daily AI-generated missions that reinforce good decisions — not random clicks. Duolingo, for your career." },
     { Icon: ChartLine, title: "Pattern Detection", body: "Auto-detect rejection patterns by seniority, role, company. Pivot before you burn out." },
-    { Icon: GraphIcon, title: "Identity Graph", body: "Your profile learns your habits — what you avoid, what you accept. Recommendations adapt." },
+    { Icon: Graph, title: "Identity Graph", body: "Your profile learns your habits — what you avoid, what you accept. Recommendations adapt." },
 ];
 
 const LOGOS = ["Stripe", "Anthropic", "Linear", "Vercel", "Notion", "Figma"];

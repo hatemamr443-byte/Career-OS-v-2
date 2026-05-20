@@ -3,11 +3,11 @@ import { useAuth } from "../context/AuthContext";
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import {
-    House, Briefcase, EnvelopeSimple, ChartLine, GraphIcon,
+    House, Briefcase, EnvelopeSimple, ChartLine, Graph,
     User as UserIcon, SignOut, Sparkle, CreditCard,
     BookmarkSimple, FileText, ChatCircle, CurrencyDollar,
     CalendarBlank, UsersThree, Warning, Brain, ShieldCheck,
-    FlameIcon
+    Flame
 } from "@phosphor-icons/react";
 import AICoachDock        from "./AICoachDock";
 import NotificationsDrawer from "./NotificationsDrawer";
@@ -21,7 +21,7 @@ const NAV_MAIN = [
     { to: "/emails",     label: "Inbox",        icon: EnvelopeSimple },
     { to: "/timeline",   label: "Timeline",     icon: CalendarBlank  },
     { to: "/insights",   label: "Insights",     icon: ChartLine      },
-    { to: "/career-map", label: "Career Map",   icon: GraphIcon      },
+    { to: "/career-map", label: "Career Map",   icon: Graph      },
 ];
 
 const NAV_TOOLS = [
@@ -145,7 +145,7 @@ export default function Layout() {
                 <div className="p-3 border-t border-zinc-900 space-y-2">
                     <div className="card-soft p-3 flex items-center gap-3" data-testid="streak-card">
                         <div className="streak-pulse w-9 h-9 rounded-full bg-orange-500/15 border border-orange-500/40 flex items-center justify-center">
-                            <FlameIcon size={18} weight="fill" color="#FF5C00" />
+                            <Flame size={18} weight="fill" color="#FF5C00" />
                         </div>
                         <div className="flex-1">
                             <div className="font-mono-ui text-lg leading-none" style={{ color: "#FF5C00" }}>

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { api } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
-import { Check, ArrowRight, Sparkle, FlameIcon, TrendUp, Lightning } from "@phosphor-icons/react";
+import { Check, ArrowRight, Sparkle, Flame, TrendUp, Lightning } from "@phosphor-icons/react";
 import ActivityFeed from "../components/ActivityFeed";
 import ProfileCompleteness from "../components/ProfileCompleteness";
 import OnboardingWidget from "../components/OnboardingWidget";
@@ -88,7 +88,7 @@ export default function Dashboard() {
 
             {/* KPI strip */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <KPI label="Streak" value={stats.streak} suffix="d" color="#FF5C00" Icon={FlameIcon} testid="kpi-streak" />
+                <KPI label="Streak" value={stats.streak} suffix="d" color="#FF5C00" Icon={Flame} testid="kpi-streak" />
                 <KPI label="XP" value={stats.xp} color="#FBBF24" Icon={Lightning} testid="kpi-xp" />
                 <KPI label="Level" value={stats.level} color="#FAFAFA" Icon={Sparkle} testid="kpi-level" />
                 <KPI label="Interview Rate" value={(insights?.rates?.interview_rate ?? 0)} suffix="%" color="#10B981" Icon={TrendUp} testid="kpi-interview" />
