@@ -19,7 +19,6 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Header
 from db import db as mongo_db, career_events
 from event_bus import event_bus
-from llm_service import _cb as circuit_breakers
 
 logger = logging.getLogger(__name__)
 
@@ -97,11 +96,19 @@ async def event_bus_stats(x_admin_token: str = Header(default="")):
 
 # ── Circuit Breakers ──────────────────────────────────────────────
 
+def _get_cb_status() -> dict:
+    """Safe accessor for circuit breaker state — uses public API."""
+    try:
+        from llm_service import _cb  # noqa: PLC0415
+        return _cb.status()
+    except Exception:
+        return {"error": "circuit breaker state unavailable"}
+
+
 @router.get("/circuit-breakers")
 async def circuit_breaker_status(x_admin_token: str = Header(default="")):
     _require_admin(x_admin_token)
-    from llm_service import _cb
-    return {"circuit_breakers": _cb.status()}
+    return {"circuit_breakers": _get_cb_status()}
 
 
 # ── Outbox Replay ─────────────────────────────────────────────────
@@ -135,11 +142,10 @@ async def replay_outbox(
     replayed, failed = 0, 0
     for ev in pending:
         try:
-            # Re-dispatch through bus (subscribers are idempotent by design)
-            handlers = event_bus._subs.get(ev["event_type"], []) + event_bus._subs.get("*", [])
-            import asyncio
+            # Re-publish through the public bus API — idempotent by design
+            import asyncio  # noqa: PLC0415
             await asyncio.gather(
-                *(event_bus._safe_dispatch(h, ev["user_id"], ev["data"]) for h in handlers),
+                event_bus.publish(ev["event_type"], ev["user_id"], ev["data"]),
                 return_exceptions=True,
             )
             await mongo_db.events_outbox.update_one(
@@ -225,7 +231,7 @@ async def system_snapshot(x_admin_token: str = Header(default="")):
         "db": {"ok": db_ok, "collections": collection_counts},
         "llm": llm_health,
         "event_bus": event_bus.stats(),
-        "circuit_breakers": circuit_breakers.status(),
+        "circuit_breakers": _get_cb_status(),
         "outbox_pending": outbox_pending,
         "environment": os.environ.get("ENVIRONMENT", "development"),
         "version": "2.1.0",

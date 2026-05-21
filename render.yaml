@@ -68,11 +68,7 @@ services:
     name: career-os-frontend
     runtime: static
     rootDir: frontend
-    buildCommand: >-
-      yarn install
-      --network-timeout 600000
-      --ignore-optional
-      && yarn build
+    buildCommand: npm ci && npm run build
     staticPublishPath: build
     plan: free
     routes:

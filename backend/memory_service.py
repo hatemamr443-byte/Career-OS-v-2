@@ -114,53 +114,10 @@ class MemoryService:
         self.user_id = user_id
 
     async def recall(self, k: int = 8, since_days: int = 365) -> list[str]:
-        """Return top-K most relevant memory snippets from career events + activity logs."""
-        now = datetime.now(timezone.utc)
-
-        # Pull career_events (primary) AND activity_logs (behavioral enrichment)
-        # Merge both streams — scoring is cheap, breadth is valuable.
-        scored: list[tuple[float, str]] = []
-
-        async def _score_cursor(cursor) -> None:
-            async for ev in cursor:
-                created = ev.get("created_at")
-                if isinstance(created, str):
-                    try:
-                        created_dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
-                    except Exception:
-                        continue
-                elif isinstance(created, datetime):
-                    created_dt = created
-                else:
-                    continue
-                if created_dt.tzinfo is None:
-                    created_dt = created_dt.replace(tzinfo=timezone.utc)
-                age_days = max((now - created_dt).total_seconds() / 86400, 0.0)
-                if age_days > since_days:
-                    continue
-                s = _score(ev.get("event_type", ""), age_days)
-                if s > 0:
-                    scored.append((s, _format_snippet(ev, age_days)))
-
-        career_cursor = career_events.find(
-            {"user_id": self.user_id},
-            {"_id": 0, "event_type": 1, "data": 1, "created_at": 1},
-        ).sort("created_at", -1).limit(200)
-
-        # Also pull activity_logs to capture CV uploads, profile changes, coach chats
-        activity_cursor = activity_logs.find(
-            {"user_id": self.user_id},
-            {"_id": 0, "event_type": 1, "metadata": 1, "created_at": 1},
-        ).sort("created_at", -1).limit(100)
-
-        await _score_cursor(career_cursor)
-        # Remap activity_logs format to match career_events schema
-        async for ev in activity_cursor:
-            ev["data"] = ev.pop("metadata", {})
-            await _score_cursor.__wrapped__(ev) if hasattr(_score_cursor, '__wrapped__') else None
-
-        scored.sort(key=lambda x: -x[0])
-        return [snippet for _, snippet in scored[:k]]
+        """Return top-K most relevant memory from career events + activity logs.
+        Delegates to recall_v2() which correctly merges both streams.
+        """
+        return await self.recall_v2(k=k, since_days=since_days)
 
     async def _score_one(self, ev: dict, now: datetime, since_days: float) -> tuple[float, str] | None:
         created = ev.get("created_at")

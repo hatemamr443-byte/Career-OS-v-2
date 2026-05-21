@@ -34,3 +34,11 @@ emergentintegrations==0.1.0
 
 # ── Error Monitoring (optional — only if SENTRY_DSN is set) ──
 sentry-sdk[fastapi]>=2.0.0
+
+# ── Optional LLM provider fallbacks ──────────────────────────────
+# These are used when EMERGENT_LLM_KEY is unavailable.
+# All imports are inside try/except blocks in llm_service.py
+# so missing packages degrade gracefully (Emergent remains primary).
+anthropic>=0.40.0
+openai>=1.50.0
+google-generativeai>=0.8.0
