@@ -84,12 +84,22 @@ app.include_router(admin_router)
 
 @app.get("/health")
 async def health():
-    """Liveness probe — Render health check. Returns 200 if process is alive."""
+    """Liveness + basic DB check. Returns 200 if alive.
+    Also checks DB so existing tests (test_iter6) that assert db=connected pass.
+    """
     from datetime import datetime, timezone
+    from db import db as mongo_db
+
+    try:
+        await mongo_db.command("ping")
+        db_status = "connected"
+    except Exception as ex:
+        db_status = f"error: {ex}"
 
     return {
         "status": "ok",
         "version": "2.1.0",
+        "db": db_status,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 

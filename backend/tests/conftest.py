@@ -1,12 +1,21 @@
-"""Pytest bootstrap for local backend integration tests."""
+"""Pytest bootstrap for CI and local backend integration tests."""
 from __future__ import annotations
 
 import os
+import sys
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
-from pymongo import MongoClient
+# ── sys.path bootstrap ────────────────────────────────────────────
+# Tests run from the repo root (pytest backend/tests/) so backend/
+# must be on sys.path for local module imports to resolve.
+_backend_dir = str(Path(__file__).parent.parent.resolve())
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
 
-# Use the local backend by default so tests validate the repo itself.
+from pymongo import MongoClient  # noqa: E402
+
+# Default to the local backend started by CI
 os.environ.setdefault("REACT_APP_BACKEND_URL", "http://localhost:8001")
 os.environ.setdefault("TEST_SESSION_TOKEN", "test_session_career_os")
 os.environ.setdefault("MONGO_URL", "mongodb://localhost:27017")
@@ -57,5 +66,5 @@ def _seed_test_identity() -> None:
     )
 
 
-def pytest_sessionstart(session):  # noqa: ARG001
+def pytest_sessionstart(session) -> None:  # noqa: ARG001
     _seed_test_identity()

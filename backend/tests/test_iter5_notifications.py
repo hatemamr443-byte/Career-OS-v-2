@@ -120,9 +120,7 @@ class TestCronEndpoint:
 # ───── render_daily_digest pure function ─────
 class TestRenderDigest:
     def test_render_returns_html_and_text(self):
-        # Import directly (works since tests run in backend env)
-        import sys
-        sys.path.insert(0, "/app/backend")
+        # conftest.py already adds backend/ to sys.path — import directly
         from emailer import render_daily_digest
 
         jobs = [

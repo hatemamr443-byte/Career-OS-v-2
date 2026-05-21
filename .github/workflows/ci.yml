@@ -80,7 +80,11 @@ jobs:
           exit 1
 
       - name: Run tests
-        run: pytest -vv backend/tests --tb=short
+        # PYTHONPATH ensures backend/ local modules (insights_service, emailer, etc.)
+        # are importable when pytest collects tests from backend/tests/
+        env:
+          PYTHONPATH: backend
+        run: pytest -vv backend/tests --tb=short -x
 
       - name: Stop backend
         if: always()
