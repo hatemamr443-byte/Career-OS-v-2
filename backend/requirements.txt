@@ -42,3 +42,6 @@ sentry-sdk[fastapi]>=2.0.0
 anthropic>=0.40.0
 openai>=1.50.0
 google-generativeai>=0.8.0
+
+# ── PDF generation (used in tests for PDF upload simulation) ──
+reportlab>=4.0.0
