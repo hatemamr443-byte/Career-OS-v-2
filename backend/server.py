@@ -1,10 +1,16 @@
 """Main FastAPI server for AI Career OS."""
 import logging
 import os
-from logging_config import configure_logging
 from pathlib import Path
 
+# ── CRITICAL: Load .env BEFORE any module imports ──────────────────
 from dotenv import load_dotenv
+
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / ".env")
+
+# ── Now safe to import modules that depend on env vars ─────────────
+from logging_config import configure_logging
 from fastapi import Depends, FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
 
@@ -29,8 +35,46 @@ from routes_profile import router as profile_router
 from routes_salary import router as salary_router
 from seed import seed_jobs_if_empty, seed_user_emails, seed_user_profile
 
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / ".env")
+# ── Environment Validation (fail-fast on startup) ───────────────────
+def _validate_environment() -> None:
+    """Verify critical environment variables are set. Fails hard if not."""
+    required = ["MONGO_URL", "DB_NAME"]
+    optional_but_recommended = [
+        "EMERGENT_LLM_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY"
+    ]
+    
+    logger = logging.getLogger(__name__)
+    missing = [var for var in required if not os.environ.get(var)]
+    
+    if missing:
+        error_msg = f"❌ STARTUP FAILED: Missing required env vars: {', '.join(missing)}"
+        logger.critical(error_msg)
+        raise RuntimeError(error_msg)
+    
+    missing_optional = [var for var in optional_but_recommended if not os.environ.get(var)]
+    if missing_optional:
+        logger.warning(
+            "⚠️  Missing optional LLM keys: %s — AI features will be degraded",
+            ", ".join(missing_optional),
+        )
+    
+    logger.info(
+        "✅ Environment validation passed",
+        extra={
+            "mongo_url_set": bool(os.environ.get("MONGO_URL")),
+            "db_name": os.environ.get("DB_NAME"),
+            "environment": os.environ.get("ENVIRONMENT", "development"),
+            "llm_providers_available": len([
+                v for v in optional_but_recommended if os.environ.get(v)
+            ]),
+        },
+    )
+
+# Configure logging AFTER env is loaded
+configure_logging()
+
+# Validate environment on module load
+_validate_environment()
 
 # ── Sentry Error Monitoring ──────────────────────────────────────
 _sentry_dsn = os.environ.get("SENTRY_DSN", "")
@@ -208,6 +252,17 @@ async def on_startup():
         logging.warning("Subscriber wiring failed: %s", ex)
 
 
+@app.on_event("shutdown")
+async def on_shutdown():
+    """Graceful shutdown — close MongoDB connection."""
+    try:
+        from db import db as mongo_db
+        await mongo_db.client.close()
+        logging.getLogger(__name__).info("MongoDB connection closed ✓")
+    except Exception as ex:
+        logging.getLogger(__name__).warning("Shutdown error: %s", ex)
+
+
 # ── Drip email cron ───────────────────────────────────────────────
 @app.post("/api/cron/welcome-emails")
 async def cron_welcome_emails(request: Request):
@@ -242,5 +297,3 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-configure_logging()  # structured JSON in prod, coloured dev format locally
