@@ -34,6 +34,7 @@ jobs:
       EMERGENT_LLM_KEY: test-key-ci
       ENVIRONMENT: test
       CRON_TOKEN: ci-token
+      STRIPE_SECRET_KEY: sk_test_ci_placeholder_do_not_use
       ADMIN_TOKEN: ci-admin-token
       LOG_LEVEL: WARNING
 
