@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Career OS — Codebase Architecture Graph</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --anthropic-dark: #141413;
+            --anthropic-light: #faf9f5;
+            --anthropic-mid-gray: #b0aea5;
+            --anthropic-light-gray: #e8e6dc;
+            --anthropic-orange: #d97757;
+            --anthropic-blue: #6a9bcc;
+            --anthropic-green: #788c5d;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--anthropic-light) 0%, #f5f3ee 100%);
+            min-height: 100vh; color: var(--anthropic-dark);
+        }
+        .container { display: flex; min-height: 100vh; padding: 20px; gap: 20px; }
+        .sidebar {
+            width: 300px; flex-shrink: 0;
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+            padding: 24px; border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(20,20,19,0.1); overflow-y: auto;
+        }
+        .sidebar h1 { font-family: 'Lora', serif; font-size: 20px; font-weight: 500; margin-bottom: 4px; }
+        .sidebar .subtitle { color: var(--anthropic-mid-gray); font-size: 12px; margin-bottom: 24px; line-height: 1.5; }
+        .control-section { margin-bottom: 24px; }
+        .control-section h3 {
+            font-size: 13px; font-weight: 600; margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .control-section h3::before { content: '•'; color: var(--anthropic-orange); font-weight: bold; }
+        .seed-input {
+            width: 100%; background: var(--anthropic-light); padding: 10px;
+            border-radius: 8px; font-family: 'Courier New', monospace; font-size: 13px;
+            margin-bottom: 10px; border: 1px solid var(--anthropic-light-gray); text-align: center;
+        }
+        .seed-input:focus { outline: none; border-color: var(--anthropic-orange); }
+        .seed-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
+        .control-group { margin-bottom: 16px; }
+        .control-group label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 6px; }
+        .slider-container { display: flex; align-items: center; gap: 10px; }
+        .slider-container input[type="range"] {
+            flex: 1; height: 4px; background: var(--anthropic-light-gray);
+            border-radius: 2px; outline: none; -webkit-appearance: none;
+        }
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 14px; height: 14px;
+            background: var(--anthropic-orange); border-radius: 50%; cursor: pointer;
+        }
+        .value-display {
+            font-family: 'Courier New', monospace; font-size: 11px;
+            color: var(--anthropic-mid-gray); min-width: 40px; text-align: right;
+        }
+        .button {
+            background: var(--anthropic-dark); color: white; border: none;
+            padding: 9px 14px; border-radius: 8px; cursor: pointer;
+            font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 500;
+            transition: all 0.2s; width: 100%; margin-bottom: 6px;
+        }
+        .button:hover { background: #2a2a28; transform: translateY(-1px); }
+        .button.secondary {
+            background: transparent; color: var(--anthropic-dark);
+            border: 1px solid var(--anthropic-light-gray);
+        }
+        .button.secondary:hover { background: var(--anthropic-light-gray); transform: none; }
+        .button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .canvas-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+        #canvas-container canvas { border-radius: 8px; box-shadow: 0 10px 40px rgba(20,20,19,0.15); display: block; }
+        .legend { display: flex; flex-direction: column; gap: 7px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--anthropic-mid-gray); }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .info-box {
+            background: var(--anthropic-light); border-radius: 8px; padding: 10px 12px;
+            font-size: 11px; color: var(--anthropic-mid-gray); line-height: 1.6;
+            border: 1px solid var(--anthropic-light-gray);
+        }
+        .info-box b { color: var(--anthropic-dark); }
+        #hover-info {
+            position: fixed; bottom: 24px; right: 24px;
+            background: rgba(255,255,255,0.97); border-radius: 10px;
+            padding: 12px 16px; box-shadow: 0 8px 24px rgba(20,20,19,0.15);
+            font-size: 12px; min-width: 200px; display: none;
+            border-left: 3px solid var(--anthropic-orange);
+        }
+        #hover-info .node-name { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+        #hover-info .node-meta { color: var(--anthropic-mid-gray); line-height: 1.6; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="sidebar">
+        <h1>Codebase<br>Architecture</h1>
+        <p class="subtitle">Career OS — 42 modules as a living force-directed graph. Nodes sized by lines of code, edges weighted by import depth.</p>
+
+        <div class="control-section">
+            <h3>Seed</h3>
+            <input type="number" class="seed-input" id="seed-input" value="73819" onchange="updateSeed()">
+            <div class="seed-controls">
+                <button class="button secondary" onclick="previousSeed()">← Prev</button>
+                <button class="button secondary" onclick="nextSeed()">Next →</button>
+            </div>
+            <button class="button secondary" style="width:100%;margin-top:0" onclick="randomSeedAndUpdate()">✦ Random</button>
+        </div>
+
+        <div class="control-section">
+            <h3>Parameters</h3>
+            <div class="control-group">
+                <label>Gravity Strength</label>
+                <div class="slider-container">
+                    <input type="range" id="gravity" min="0.02" max="0.30" step="0.01" value="0.10" oninput="updateParam('gravity',+this.value)">
+                    <span class="value-display" id="gravity-value">0.10</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Repulsion Force</label>
+                <div class="slider-container">
+                    <input type="range" id="repulsion" min="200" max="2000" step="50" value="800" oninput="updateParam('repulsion',+this.value)">
+                    <span class="value-display" id="repulsion-value">800</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Edge Tension</label>
+                <div class="slider-container">
+                    <input type="range" id="edgeTension" min="0.01" max="0.15" step="0.005" value="0.04" oninput="updateParam('edgeTension',+this.value)">
+                    <span class="value-display" id="edgeTension-value">0.040</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Signal Speed</label>
+                <div class="slider-container">
+                    <input type="range" id="signalSpeed" min="0.3" max="3.0" step="0.1" value="1.0" oninput="updateParam('signalSpeed',+this.value)">
+                    <span class="value-display" id="signalSpeed-value">1.0</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Node Scale</label>
+                <div class="slider-container">
+                    <input type="range" id="nodeScale" min="0.5" max="2.0" step="0.1" value="1.0" oninput="updateParam('nodeScale',+this.value)">
+                    <span class="value-display" id="nodeScale-value">1.0</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Label Opacity</label>
+                <div class="slider-container">
+                    <input type="range" id="labelOpacity" min="0" max="255" step="5" value="160" oninput="updateParam('labelOpacity',+this.value)">
+                    <span class="value-display" id="labelOpacity-value">160</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3>Legend</h3>
+            <div class="legend">
+                <div class="legend-item"><div class="legend-dot" style="background:#d97757"></div> Infrastructure (db, config, auth…)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#6a9bcc"></div> Intelligence (orchestrator, memory…)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#788c5d"></div> Route modules (routes_*)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#b07aad"></div> Support (ai_limits, xp, emailer…)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#e8c46a; border-radius:2px; width:16px; height:4px"></div> Signal flows</div>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3>About</h3>
+            <div class="info-box">
+                <b>Node size</b> = lines of code<br>
+                <b>Edge weight</b> = import frequency<br>
+                <b>Glow</b> = active signal traffic<br>
+                <b>Hover</b> = file details<br><br>
+                42 backend files · 200+ lines of routes · 1 central orchestrator
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3>Actions</h3>
+            <div class="button-row">
+                <button class="button" onclick="resetParameters()">Reset</button>
+                <button class="button secondary" onclick="downloadPNG()">Save PNG</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="canvas-area">
+        <div id="canvas-container"></div>
+    </div>
+</div>
+
+<div id="hover-info">
+    <div class="node-name" id="hi-name"></div>
+    <div class="node-meta" id="hi-meta"></div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// CAREER OS CODEBASE — LAYERED EMERGENCE
+//
+// Philosophy: A codebase is a topology, not a file list.
+// Every module occupies a gravitational position in architecture space.
+// Core infrastructure forms a dense center — its gravity shapes the orbit
+// of every dependent module. Intelligence layers float in the middle ring,
+// heavy with complexity. Route modules radiate outward like solar spires,
+// light but numerous. Signal particles trace the invisible import chains —
+// the execution paths that only exist at runtime, never in static analysis.
+// The graph breathes: forces find equilibrium, then perturbations ripple
+// outward. Watch the orchestrator — it is the sun.
+// ══════════════════════════════════════════════════════════════════
+
+const NODES_DATA = [
+    // INFRASTRUCTURE LAYER — color: orange
+    {id:"server",       label:"server.py",       layer:"infra",  lines:240, deps:["config","logging_config","auth","orchestrator"]},
+    {id:"config",       label:"config.py",        layer:"infra",  lines:149, deps:[]},
+    {id:"db",           label:"db.py",             layer:"infra",  lines:42,  deps:[]},
+    {id:"models",       label:"models.py",         layer:"infra",  lines:60,  deps:[]},
+    {id:"logging_config",label:"logging_config.py",layer:"infra",  lines:90,  deps:[]},
+    {id:"auth",         label:"auth.py",           layer:"infra",  lines:137, deps:["models","db","welcome_emails"]},
+
+    // INTELLIGENCE LAYER — color: blue
+    {id:"orchestrator", label:"orchestrator.py",   layer:"intel",  lines:180, deps:["llm_service","memory_service","career_intelligence","event_bus","db"]},
+    {id:"llm_service",  label:"llm_service.py",    layer:"intel",  lines:200, deps:["config"]},
+    {id:"career_intelligence",label:"career_intelligence.py",layer:"intel",lines:325,deps:["db"]},
+    {id:"memory_service",label:"memory_service.py",layer:"intel",  lines:220, deps:["db"]},
+    {id:"insights_service",label:"insights_service.py",layer:"intel",lines:180,deps:["db"]},
+    {id:"memory_consolidation",label:"memory_consolidation.py",layer:"intel",lines:110,deps:["db","orchestrator","career_intelligence"]},
+    {id:"event_bus",    label:"event_bus.py",       layer:"intel",  lines:130, deps:["db"]},
+
+    // ROUTE MODULES — color: green
+    {id:"routes_profile",  label:"routes_profile",    layer:"route", lines:120, deps:["auth","db","orchestrator","activity","xp"]},
+    {id:"routes_jobs",     label:"routes_jobs",        layer:"route", lines:280, deps:["auth","db","orchestrator","activity","xp","ai_limits","job_sources"]},
+    {id:"routes_cv",       label:"routes_cv",          layer:"route", lines:200, deps:["auth","db","orchestrator","activity","xp","ai_limits"]},
+    {id:"routes_cv_intel", label:"routes_cv_intel",    layer:"route", lines:344, deps:["auth","db","orchestrator","llm_service"]},
+    {id:"routes_interview",label:"routes_interview",   layer:"route", lines:180, deps:["auth","db","orchestrator","activity","ai_limits"]},
+    {id:"routes_salary",   label:"routes_salary",      layer:"route", lines:160, deps:["auth","db","orchestrator","ai_limits"]},
+    {id:"routes_decision", label:"routes_decision",    layer:"route", lines:200, deps:["auth","db","orchestrator","ai_limits"]},
+    {id:"routes_gamification",label:"routes_gamification",layer:"route",lines:280,deps:["auth","db","orchestrator","activity","xp","ai_limits"]},
+    {id:"routes_insights", label:"routes_insights",    layer:"route", lines:80,  deps:["auth","db","insights_service"]},
+    {id:"routes_activity", label:"routes_activity",    layer:"route", lines:60,  deps:["auth","db","activity"]},
+    {id:"routes_billing",  label:"routes_billing",     layer:"route", lines:120, deps:["auth","db"]},
+    {id:"routes_gmail",    label:"routes_gmail",       layer:"route", lines:130, deps:["auth","db"]},
+    {id:"routes_gdpr",     label:"routes_gdpr",        layer:"route", lines:90,  deps:["auth","db"]},
+    {id:"routes_emails",   label:"routes_emails",      layer:"route", lines:60,  deps:["auth","db","orchestrator"]},
+    {id:"routes_notifications",label:"routes_notifications",layer:"route",lines:50,deps:["auth","db"]},
+    {id:"routes_onboarding",label:"routes_onboarding", layer:"route", lines:60,  deps:["auth","db"]},
+    {id:"routes_orchestrator",label:"routes_orchestrator",layer:"route",lines:80,deps:["auth","orchestrator","memory_service","career_intelligence"]},
+    {id:"routes_admin",    label:"routes_admin",       layer:"route", lines:160, deps:["db","event_bus","llm_service","memory_service","career_intelligence"]},
+
+    // SUPPORT LAYER — color: purple
+    {id:"activity",        label:"activity.py",        layer:"support",lines:29, deps:["db","models"]},
+    {id:"xp",              label:"xp.py",               layer:"support",lines:80, deps:["db","notifications","activity"]},
+    {id:"notifications",   label:"notifications.py",   layer:"support",lines:90, deps:["db"]},
+    {id:"ai_limits",       label:"ai_limits.py",        layer:"support",lines:156,deps:["db","quota"]},
+    {id:"quota",           label:"quota.py",            layer:"support",lines:79, deps:["db"]},
+    {id:"daily_digest",    label:"daily_digest.py",    layer:"support",lines:129,deps:["db","job_sources","emailer"]},
+    {id:"emailer",         label:"emailer.py",          layer:"support",lines:80, deps:[]},
+    {id:"welcome_emails",  label:"welcome_emails.py",  layer:"support",lines:120,deps:[]},
+    {id:"job_sources",     label:"job_sources.py",     layer:"support",lines:376,deps:["db","models"]},
+    {id:"seed",            label:"seed.py",             layer:"support",lines:60, deps:["db","models"]},
+];
+
+const LAYER_COLORS = {
+    infra:   {r:217,g:119,b:87},   // orange
+    intel:   {r:106,g:155,b:204},  // blue
+    route:   {r:120,g:140,b:93},   // green
+    support: {r:176,g:122,b:173},  // purple
+};
+
+const LAYER_RADII = {
+    infra:   0.12,
+    intel:   0.28,
+    route:   0.60,
+    support: 0.48,
+};
+
+let params = {
+    seed: 73819,
+    gravity: 0.10,
+    repulsion: 800,
+    edgeTension: 0.04,
+    signalSpeed: 1.0,
+    nodeScale: 1.0,
+    labelOpacity: 160,
+};
+let defaultParams = {...params};
+
+// Runtime state
+let nodes = [];
+let edges = [];
+let signals = [];
+let pInst;
+let hoveredNode = null;
+
+// Build edge list from dep declarations
+function buildEdges() {
+    edges = [];
+    const idMap = {};
+    nodes.forEach((n,i) => idMap[n.id] = i);
+
+    NODES_DATA.forEach(nd => {
+        const ai = idMap[nd.id];
+        (nd.deps||[]).forEach(dep => {
+            const bi = idMap[dep];
+            if (bi !== undefined) {
+                edges.push({a: ai, b: bi, weight: 1.0});
+            }
+        });
+    });
+}
+
+function initSystem(p) {
+    p.randomSeed(params.seed);
+    p.noiseSeed(params.seed);
+    nodes = [];
+    signals = [];
+
+    const cx = p.width / 2;
+    const cy = p.height / 2;
+    const R  = Math.min(p.width, p.height) * 0.42;
+
+    NODES_DATA.forEach((nd, i) => {
+        const baseR = LAYER_RADII[nd.layer] * R;
+        const jitter = p.random(-R*0.08, R*0.08);
+        const angle  = p.random(p.TWO_PI);
+        const r      = baseR + jitter;
+        const col    = LAYER_COLORS[nd.layer];
+        const radius = Math.sqrt(nd.lines) * 0.55 * params.nodeScale;
+
+        nodes.push({
+            ...nd,
+            x:   cx + r * Math.cos(angle),
+            y:   cy + r * Math.sin(angle),
+            vx:  0, vy: 0,
+            r:   Math.max(6, Math.min(24, radius)),
+            col, i,
+            glow: 0,
+            phase: p.random(p.TWO_PI),
+        });
+    });
+
+    buildEdges();
+}
+
+// Force-directed physics
+function tickPhysics() {
+    const N  = nodes.length;
+    const rep = params.repulsion;
+    const grav = params.gravity;
+
+    // Repulsion
+    for (let i = 0; i < N; i++) {
+        for (let j = i+1; j < N; j++) {
+            const a = nodes[i], b = nodes[j];
+            const dx = a.x - b.x, dy = a.y - b.y;
+            const d2 = Math.max(dx*dx + dy*dy, 1);
+            const d  = Math.sqrt(d2);
+            const f  = rep / d2;
+            const ux = dx/d, uy = dy/d;
+            a.vx += f*ux; a.vy += f*uy;
+            b.vx -= f*ux; b.vy -= f*uy;
+        }
+    }
+
+    // Edge attraction
+    edges.forEach(e => {
+        const a = nodes[e.a], b = nodes[e.b];
+        if (!a || !b) return;
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const d  = Math.sqrt(dx*dx + dy*dy);
+        if (d < 1) return;
+        const f  = d * params.edgeTension * e.weight;
+        const ux = dx/d, uy = dy/d;
+        a.vx += f*ux; a.vy += f*uy;
+        b.vx -= f*ux; b.vy -= f*uy;
+    });
+
+    // Center gravity
+    const cx = pInst.width/2, cy = pInst.height/2;
+    nodes.forEach(n => {
+        n.vx += (cx - n.x) * grav * 0.004;
+        n.vy += (cy - n.y) * grav * 0.004;
+        n.vx *= 0.85; n.vy *= 0.85;
+        n.x  += n.vx; n.y  += n.vy;
+        // Clamp
+        const pad = n.r + 20;
+        n.x = Math.max(pad, Math.min(pInst.width - pad, n.x));
+        n.y = Math.max(pad, Math.min(pInst.height - pad, n.y));
+        n.glow = Math.max(0, n.glow - 0.04);
+    });
+}
+
+// Signal spawning
+function spawnSignals() {
+    if (signals.length < 30 && Math.random() < 0.08) {
+        const e = edges[Math.floor(Math.random() * edges.length)];
+        if (!e) return;
+        const forward = Math.random() < 0.5;
+        const src = forward ? e.a : e.b;
+        const dst = forward ? e.b : e.a;
+        signals.push({
+            src, dst,
+            prog: 0,
+            speed: (0.006 + Math.random() * 0.012) * params.signalSpeed,
+            r: Math.random() * 3 + 2,
+            col: nodes[src] ? nodes[src].col : {r:220,g:200,b:120},
+            tail: [],
+        });
+    }
+}
+
+new p5(function(p) {
+    pInst = p;
+
+    p.setup = function() {
+        const cnv = p.createCanvas(870, 840);
+        cnv.parent('canvas-container');
+        cnv.elt.style.cursor = 'crosshair';
+        initSystem(p);
+
+        // Warm up physics
+        for (let i = 0; i < 120; i++) tickPhysics();
+    };
+
+    p.draw = function() {
+        p.background(248, 247, 243);
+
+        // Soft vignette
+        for (let r = 400; r > 0; r -= 10) {
+            p.noStroke(); p.fill(235, 232, 225, p.map(r, 0, 400, 0, 8));
+            p.ellipse(p.width/2, p.height/2, r*2, r*2);
+        }
+
+        tickPhysics();
+        spawnSignals();
+        drawEdges(p);
+        updateSignals(p);
+        drawNodes(p);
+        checkHover(p);
+    };
+});
+
+function drawEdges(p) {
+    p.noFill();
+    edges.forEach(e => {
+        const a = nodes[e.a], b = nodes[e.b];
+        if (!a || !b) return;
+        const glowAmt = (a.glow + b.glow) * 0.5;
+        const alpha = 18 + glowAmt * 60;
+        p.stroke(160, 155, 145, alpha);
+        p.strokeWeight(0.8 + glowAmt * 1.5);
+        p.line(a.x, a.y, b.x, b.y);
+    });
+}
+
+function updateSignals(p) {
+    signals = signals.filter(s => s.prog < 1.0);
+    signals.forEach(s => {
+        s.prog = Math.min(1, s.prog + s.speed);
+        const a = nodes[s.src], b = nodes[s.dst];
+        if (!a || !b) { s.prog = 1; return; }
+
+        const sx = p.lerp(a.x, b.x, s.prog);
+        const sy = p.lerp(a.y, b.y, s.prog);
+        s.tail.push({x: sx, y: sy});
+        if (s.tail.length > 8) s.tail.shift();
+
+        // Tail
+        p.noFill();
+        for (let i = 1; i < s.tail.length; i++) {
+            const ta = i / s.tail.length;
+            p.stroke(s.col.r, s.col.g, s.col.b, ta * 180);
+            p.strokeWeight(s.r * ta * 0.7);
+            p.line(s.tail[i-1].x, s.tail[i-1].y, s.tail[i].x, s.tail[i].y);
+        }
+
+        // Head glow
+        p.noStroke();
+        p.fill(s.col.r, s.col.g, s.col.b, 60);
+        p.ellipse(sx, sy, s.r * 4, s.r * 4);
+        p.fill(s.col.r, s.col.g, s.col.b, 220);
+        p.ellipse(sx, sy, s.r * 1.2, s.r * 1.2);
+        p.fill(255, 255, 255, 200);
+        p.ellipse(sx, sy, s.r * 0.4, s.r * 0.4);
+
+        if (s.prog > 0.93 && b) {
+            b.glow = Math.min(1, b.glow + 0.2);
+        }
+    });
+}
+
+function drawNodes(p) {
+    const t = p.millis() / 1000;
+    nodes.forEach(nd => {
+        const pulse = 1.0 + Math.sin(t * 1.8 + nd.phase) * 0.07;
+        const r = nd.r * pulse * params.nodeScale;
+        const c = nd.col;
+        const isHovered = nd === hoveredNode;
+
+        // Glow halo
+        if (nd.glow > 0.05 || isHovered) {
+            const hg = isHovered ? 1 : nd.glow;
+            p.noStroke(); p.fill(c.r, c.g, c.b, hg * 30);
+            p.ellipse(nd.x, nd.y, r * 5, r * 5);
+            p.fill(c.r, c.g, c.b, hg * 55);
+            p.ellipse(nd.x, nd.y, r * 3, r * 3);
+        }
+
+        // Body
+        p.noStroke();
+        p.fill(c.r, c.g, c.b, isHovered ? 255 : 200);
+        p.ellipse(nd.x, nd.y, r * 2, r * 2);
+
+        // Inner specular
+        p.fill(255, 255, 255, isHovered ? 160 : 100);
+        p.ellipse(nd.x - r * 0.22, nd.y - r * 0.22, r * 0.65, r * 0.65);
+
+        // Ring for hovered
+        if (isHovered) {
+            p.noFill();
+            p.stroke(c.r, c.g, c.b, 180);
+            p.strokeWeight(1.5);
+            p.ellipse(nd.x, nd.y, r * 3.5, r * 3.5);
+        }
+
+        // Label
+        const labelA = params.labelOpacity * (isHovered ? 1.6 : (r > 10 ? 1.0 : 0.5));
+        if (labelA > 20) {
+            p.noStroke();
+            p.fill(20, 20, 19, Math.min(255, labelA));
+            p.textFont('Courier New');
+            p.textSize(r > 12 ? 9 : 8);
+            p.textAlign(p.CENTER, p.TOP);
+            // Short label
+            const lbl = nd.label.replace("routes_","").replace(".py","");
+            p.text(lbl, nd.x, nd.y + r + 3);
+        }
+    });
+}
+
+function checkHover(p) {
+    const mx = p.mouseX, my = p.mouseY;
+    let found = null;
+    nodes.forEach(nd => {
+        const d = Math.sqrt((mx - nd.x)**2 + (my - nd.y)**2);
+        if (d < nd.r * params.nodeScale + 6) found = nd;
+    });
+
+    hoveredNode = found;
+    const box = document.getElementById('hover-info');
+    if (found) {
+        box.style.display = 'block';
+        document.getElementById('hi-name').textContent = found.label;
+        const layerName = {infra:'Infrastructure',intel:'Intelligence',route:'Route Module',support:'Support'}[found.layer];
+        const inDeps = edges.filter(e => nodes[e.b] === found).length;
+        const outDeps = edges.filter(e => nodes[e.a] === found).length;
+        document.getElementById('hi-meta').innerHTML =
+            `Layer: <b>${layerName}</b><br>` +
+            `Lines: <b>${found.lines}</b><br>` +
+            `Imported by: <b>${inDeps}</b> modules<br>` +
+            `Imports: <b>${outDeps}</b> modules`;
+    } else {
+        box.style.display = 'none';
+    }
+}
+
+// ── UI Handlers ────────────────────────────────────────
+function updateParam(name, value) {
+    params[name] = value;
+    const el = document.getElementById(name + '-value');
+    if (el) el.textContent = value < 1 ? value.toFixed(value < 0.1 ? 3 : 2) : value;
+    if (name === 'nodeScale') nodes.forEach(n => {
+        n.r = Math.max(6, Math.min(24, Math.sqrt(n.lines) * 0.55 * value));
+    });
+}
+
+function updateSeedDisplay() {
+    document.getElementById('seed-input').value = params.seed;
+}
+
+function updateSeed() {
+    const v = parseInt(document.getElementById('seed-input').value);
+    if (v > 0) { params.seed = v; initSystem(pInst); for(let i=0;i<100;i++) tickPhysics(); }
+}
+
+function previousSeed() {
+    params.seed = Math.max(1, params.seed - 1);
+    updateSeedDisplay(); initSystem(pInst); for(let i=0;i<100;i++) tickPhysics();
+}
+
+function nextSeed() {
+    params.seed++;
+    updateSeedDisplay(); initSystem(pInst); for(let i=0;i<100;i++) tickPhysics();
+}
+
+function randomSeedAndUpdate() {
+    params.seed = Math.floor(Math.random() * 999999) + 1;
+    updateSeedDisplay(); initSystem(pInst); for(let i=0;i<100;i++) tickPhysics();
+}
+
+function resetParameters() {
+    params = {...defaultParams};
+    ['gravity','repulsion','edgeTension','signalSpeed','nodeScale','labelOpacity'].forEach(k => {
+        const el = document.getElementById(k);
+        if (el) el.value = params[k];
+        const vl = document.getElementById(k+'-value');
+        if (vl) vl.textContent = params[k] < 1 ? params[k].toFixed(params[k] < 0.1 ? 3 : 2) : params[k];
+    });
+    updateSeedDisplay();
+    initSystem(pInst);
+    for(let i=0;i<120;i++) tickPhysics();
+}
+
+function downloadPNG() {
+    if (pInst) pInst.saveCanvas('career-os-codebase-graph', 'png');
+}
+
+window.addEventListener('load', updateSeedDisplay);
+</script>
+</body>
+</html>

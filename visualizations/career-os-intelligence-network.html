@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Career Intelligence Network — Career OS</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --anthropic-dark: #141413;
+            --anthropic-light: #faf9f5;
+            --anthropic-mid-gray: #b0aea5;
+            --anthropic-light-gray: #e8e6dc;
+            --anthropic-orange: #d97757;
+            --anthropic-blue: #6a9bcc;
+            --anthropic-green: #788c5d;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--anthropic-light) 0%, #f5f3ee 100%);
+            min-height: 100vh;
+            color: var(--anthropic-dark);
+        }
+        .container { display: flex; min-height: 100vh; padding: 20px; gap: 20px; }
+        .sidebar {
+            width: 300px; flex-shrink: 0;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 24px; border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(20,20,19,0.1);
+            overflow-y: auto;
+        }
+        .sidebar h1 {
+            font-family: 'Lora', serif; font-size: 20px; font-weight: 500;
+            color: var(--anthropic-dark); margin-bottom: 6px;
+        }
+        .sidebar .subtitle {
+            color: var(--anthropic-mid-gray); font-size: 12px;
+            margin-bottom: 28px; line-height: 1.5;
+        }
+        .control-section { margin-bottom: 28px; }
+        .control-section h3 {
+            font-size: 13px; font-weight: 600; color: var(--anthropic-dark);
+            margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .control-section h3::before { content: '•'; color: var(--anthropic-orange); font-weight: bold; }
+        .seed-input {
+            width: 100%; background: var(--anthropic-light); padding: 10px;
+            border-radius: 8px; font-family: 'Courier New', monospace; font-size: 13px;
+            margin-bottom: 10px; border: 1px solid var(--anthropic-light-gray); text-align: center;
+        }
+        .seed-input:focus { outline: none; border-color: var(--anthropic-orange); }
+        .seed-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
+        .control-group { margin-bottom: 18px; }
+        .control-group label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 6px; }
+        .slider-container { display: flex; align-items: center; gap: 10px; }
+        .slider-container input[type="range"] {
+            flex: 1; height: 4px; background: var(--anthropic-light-gray);
+            border-radius: 2px; outline: none; -webkit-appearance: none;
+        }
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 14px; height: 14px;
+            background: var(--anthropic-orange); border-radius: 50%; cursor: pointer;
+        }
+        .value-display {
+            font-family: 'Courier New', monospace; font-size: 11px;
+            color: var(--anthropic-mid-gray); min-width: 42px; text-align: right;
+        }
+        .color-group { margin-bottom: 12px; }
+        .color-group label { display: block; font-size: 11px; color: var(--anthropic-mid-gray); margin-bottom: 4px; }
+        .color-picker-container { display: flex; align-items: center; gap: 8px; }
+        .color-picker-container input[type="color"] {
+            width: 28px; height: 28px; border: none; border-radius: 6px; cursor: pointer; padding: 0; background: none;
+        }
+        .color-value { font-family: 'Courier New', monospace; font-size: 11px; color: var(--anthropic-mid-gray); }
+        .button {
+            background: var(--anthropic-dark); color: white; border: none;
+            padding: 9px 14px; border-radius: 8px; cursor: pointer;
+            font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 500;
+            transition: all 0.2s; width: 100%; text-align: center;
+        }
+        .button:hover { background: #2a2a28; transform: translateY(-1px); }
+        .button.secondary {
+            background: transparent; color: var(--anthropic-dark);
+            border: 1px solid var(--anthropic-light-gray);
+        }
+        .button.secondary:hover { background: var(--anthropic-light-gray); transform: none; }
+        .button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .canvas-area { flex: 1; display: flex; align-items: center; justify-content: center; }
+        #canvas-container canvas { border-radius: 8px; box-shadow: 0 10px 40px rgba(20,20,19,0.15); display: block; }
+        .legend { display: flex; flex-direction: column; gap: 8px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--anthropic-mid-gray); }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .divider { height: 1px; background: var(--anthropic-light-gray); margin: 4px 0 16px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="sidebar">
+        <h1>Career Intelligence<br>Network</h1>
+        <p class="subtitle">Persistent career memory as a living graph — events, skills, and connections emerging over time.</p>
+
+        <!-- Seed -->
+        <div class="control-section">
+            <h3>Seed</h3>
+            <input type="number" class="seed-input" id="seed-input" value="42137" onchange="updateSeed()">
+            <div class="seed-controls">
+                <button class="button secondary" onclick="previousSeed()">← Prev</button>
+                <button class="button secondary" onclick="nextSeed()">Next →</button>
+            </div>
+            <button class="button secondary" style="width:100%" onclick="randomSeedAndUpdate()">✦ Random</button>
+        </div>
+
+        <!-- Parameters -->
+        <div class="control-section">
+            <h3>Parameters</h3>
+
+            <div class="control-group">
+                <label>Career Events</label>
+                <div class="slider-container">
+                    <input type="range" id="nodeCount" min="20" max="80" step="1" value="45" oninput="updateParam('nodeCount', +this.value)">
+                    <span class="value-display" id="nodeCount-value">45</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Memory Decay</label>
+                <div class="slider-container">
+                    <input type="range" id="decayRate" min="0.001" max="0.012" step="0.001" value="0.004" oninput="updateParam('decayRate', +this.value)">
+                    <span class="value-display" id="decayRate-value">0.004</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Signal Flow Speed</label>
+                <div class="slider-container">
+                    <input type="range" id="signalSpeed" min="0.3" max="3.0" step="0.1" value="1.2" oninput="updateParam('signalSpeed', +this.value)">
+                    <span class="value-display" id="signalSpeed-value">1.20</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Connection Tension</label>
+                <div class="slider-container">
+                    <input type="range" id="tension" min="0.02" max="0.18" step="0.01" value="0.07" oninput="updateParam('tension', +this.value)">
+                    <span class="value-display" id="tension-value">0.07</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Orbital Drift</label>
+                <div class="slider-container">
+                    <input type="range" id="drift" min="0.0" max="0.8" step="0.05" value="0.25" oninput="updateParam('drift', +this.value)">
+                    <span class="value-display" id="drift-value">0.25</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Pulse Intensity</label>
+                <div class="slider-container">
+                    <input type="range" id="pulseIntensity" min="0.2" max="2.0" step="0.1" value="1.0" oninput="updateParam('pulseIntensity', +this.value)">
+                    <span class="value-display" id="pulseIntensity-value">1.0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Colors -->
+        <div class="control-section">
+            <h3>Colors</h3>
+            <div class="color-group">
+                <label>Applications</label>
+                <div class="color-picker-container">
+                    <input type="color" id="colorApply" value="#d97757" onchange="updateColor('colorApply', this.value)">
+                    <span class="color-value" id="colorApply-value">#d97757</span>
+                </div>
+            </div>
+            <div class="color-group">
+                <label>Skills & Memory</label>
+                <div class="color-picker-container">
+                    <input type="color" id="colorSkill" value="#6a9bcc" onchange="updateColor('colorSkill', this.value)">
+                    <span class="color-value" id="colorSkill-value">#6a9bcc</span>
+                </div>
+            </div>
+            <div class="color-group">
+                <label>Offers & Growth</label>
+                <div class="color-picker-container">
+                    <input type="color" id="colorOffer" value="#788c5d" onchange="updateColor('colorOffer', this.value)">
+                    <span class="color-value" id="colorOffer-value">#788c5d</span>
+                </div>
+            </div>
+            <div class="color-group">
+                <label>Interviews</label>
+                <div class="color-picker-container">
+                    <input type="color" id="colorInterview" value="#b07aad" onchange="updateColor('colorInterview', this.value)">
+                    <span class="color-value" id="colorInterview-value">#b07aad</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="control-section">
+            <h3>Legend</h3>
+            <div class="legend">
+                <div class="legend-item"><div class="legend-dot" style="background:#d97757"></div> Job Applications</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#6a9bcc"></div> Skills & Memory</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#788c5d"></div> Offers & Wins</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#b07aad"></div> Interviews</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#f0c060; border-radius:2px; width:14px; height:6px"></div> Signal flow</div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="control-section">
+            <h3>Actions</h3>
+            <div class="button-row">
+                <button class="button" onclick="resetParameters()">Reset</button>
+                <button class="button secondary" onclick="downloadPNG()">Save PNG</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="canvas-area">
+        <div id="canvas-container"></div>
+    </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// CAREER INTELLIGENCE NETWORK — Algorithmic Philosophy:
+// "Cognitive Constellation"
+//
+// A career is not a timeline — it is a living network.
+// Every application, skill, interview, and offer leaves a
+// node in memory space. Nodes decay with time (memory fading)
+// but resist decay when connected to other active nodes.
+// Signals propagate along edges — intelligence flows between
+// domains. The graph breathes: clusters form, dissolve, reform.
+// The moat is persistence. The moat is connection.
+// ═══════════════════════════════════════════════════════
+
+let params = {
+    seed: 42137,
+    nodeCount: 45,
+    decayRate: 0.004,
+    signalSpeed: 1.2,
+    tension: 0.07,
+    drift: 0.25,
+    pulseIntensity: 1.0,
+    colorApply:     '#d97757',
+    colorSkill:     '#6a9bcc',
+    colorOffer:     '#788c5d',
+    colorInterview: '#b07aad',
+};
+let defaultParams = {...params};
+
+// Node types — match Career OS event taxonomy
+const NODE_TYPES = ['apply', 'apply', 'apply', 'skill', 'skill', 'interview', 'offer', 'skill', 'apply', 'interview'];
+
+// ═══ State ════════════════════════════════════════════
+let nodes = [];
+let edges = [];
+let signals = [];
+let t = 0;
+let pInst;
+
+// ═══ p5 sketch ════════════════════════════════════════
+new p5(function(p) {
+    pInst = p;
+
+    p.setup = function() {
+        let cnv = p.createCanvas(900, 860);
+        cnv.parent('canvas-container');
+        p.colorMode(p.RGB, 255, 255, 255, 255);
+        buildGraph();
+    };
+
+    p.draw = function() {
+        t += 0.008;
+        drawBackground(p);
+        updatePhysics(p);
+        drawEdges(p);
+        drawSignals(p);
+        drawNodes(p);
+        spawnSignals(p);
+    };
+
+    // expose p instance methods to outer scope
+    window._p5 = p;
+});
+
+// ═══ Graph Construction ════════════════════════════════
+function buildGraph() {
+    const p = pInst;
+    p.randomSeed(params.seed);
+    p.noiseSeed(params.seed);
+    nodes = [];
+    edges = [];
+    signals = [];
+
+    const cx = p.width / 2;
+    const cy = p.height / 2;
+    const N = params.nodeCount;
+
+    // Place nodes in clustered orbits — like a memory constellation
+    for (let i = 0; i < N; i++) {
+        const angle = p.random(p.TWO_PI);
+        const orbit  = p.random(0.3, 1.0);
+        const r      = orbit * 320 + p.random(-40, 40);
+        const type   = NODE_TYPES[i % NODE_TYPES.length];
+        const age    = p.random(0, 200);   // events happened at different times
+        const weight = p.random(0.4, 1.0); // memory weight (importance)
+
+        nodes.push({
+            x:  cx + r * Math.cos(angle),
+            y:  cy + r * Math.sin(angle),
+            vx: 0, vy: 0,
+            baseX: cx + r * Math.cos(angle),
+            baseY: cy + r * Math.sin(angle),
+            r:    p.random(6, 18),
+            type: type,
+            age:  age,
+            weight: weight,
+            memory: weight,  // current memory strength (decays)
+            phase: p.random(p.TWO_PI),
+            id: i,
+        });
+    }
+
+    // Build edges — connect nearby same-type nodes + cross-type bridges
+    for (let i = 0; i < N; i++) {
+        for (let j = i + 1; j < N; j++) {
+            const a = nodes[i], b = nodes[j];
+            const d = dist2(a, b);
+            const sameType = a.type === b.type;
+            const threshold = sameType ? 160 : 120;
+            if (d < threshold * threshold) {
+                const strength = p.map(d, 0, threshold * threshold, 1.0, 0.1);
+                if (strength > 0.2 || p.random() < 0.3) {
+                    edges.push({ a: i, b: j, strength, sameType });
+                }
+            }
+        }
+    }
+
+    // Ensure central "orchestrator" hub is connected to many nodes
+    const hub = {
+        x: cx, y: cy, vx: 0, vy: 0,
+        baseX: cx, baseY: cy,
+        r: 22, type: 'hub',
+        age: 0, weight: 1.0, memory: 1.0,
+        phase: 0, id: N,
+    };
+    nodes.unshift(hub);
+
+    // Connect hub to 8-14 nodes
+    const hubConnCount = Math.floor(p.random(8, 15));
+    let shuffled = [...nodes.slice(1)].sort(() => p.random() - 0.5);
+    for (let k = 0; k < Math.min(hubConnCount, shuffled.length); k++) {
+        edges.push({ a: 0, b: shuffled[k].id + 1, strength: 0.7, sameType: false, isHubEdge: true });
+    }
+}
+
+function dist2(a, b) {
+    return (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
+}
+
+// ═══ Physics ═══════════════════════════════════════════
+function updatePhysics(p) {
+    const tension   = params.tension;
+    const drift     = params.drift;
+    const decayRate = params.decayRate;
+
+    nodes.forEach((nd, i) => {
+        if (nd.type === 'hub') return;
+
+        // Orbital drift — nodes slowly shift position
+        const driftAngle = t * 0.4 + nd.phase;
+        const driftX = Math.sin(driftAngle * 1.1) * drift * 18;
+        const driftY = Math.cos(driftAngle * 0.9) * drift * 14;
+
+        // Spring back to base position
+        const ex = (nd.baseX + driftX) - nd.x;
+        const ey = (nd.baseY + driftY) - nd.y;
+        nd.vx += ex * tension;
+        nd.vy += ey * tension;
+
+        // Damping
+        nd.vx *= 0.88;
+        nd.vy *= 0.88;
+        nd.x  += nd.vx;
+        nd.y  += nd.vy;
+
+        // Memory decay — edges with active signals slow decay (reinforcement)
+        const reinforced = signals.some(s => s.edgeA === i || s.edgeB === i);
+        const decay = reinforced ? decayRate * 0.3 : decayRate;
+        nd.memory = Math.max(0.08, nd.memory - decay * 0.016);
+    });
+}
+
+// ═══ Background ════════════════════════════════════════
+function drawBackground(p) {
+    p.background(248, 247, 243);
+
+    // Subtle radial gradient overlay
+    for (let r = 300; r > 0; r -= 8) {
+        const alpha = p.map(r, 0, 300, 0, 12);
+        p.fill(215, 210, 195, alpha);
+        p.noStroke();
+        p.ellipse(p.width / 2, p.height / 2, r * 2, r * 2);
+    }
+}
+
+// ═══ Edges ═════════════════════════════════════════════
+function drawEdges(p) {
+    p.noFill();
+    edges.forEach(e => {
+        const a = nodes[e.a], b = nodes[e.b];
+        if (!a || !b) return;
+
+        const memAvg = (a.memory + b.memory) / 2;
+        const alpha  = memAvg * e.strength * 55 + 8;
+        const weight = e.isHubEdge ? 1.4 : (e.sameType ? 1.0 : 0.6);
+
+        p.stroke(180, 175, 165, alpha);
+        p.strokeWeight(weight);
+        p.line(a.x, a.y, b.x, b.y);
+    });
+}
+
+// ═══ Signal Particles ══════════════════════════════════
+function spawnSignals(p) {
+    if (signals.length < 28 && p.random() < 0.06) {
+        // Pick a random active edge
+        if (edges.length === 0) return;
+        const e = edges[Math.floor(p.random(edges.length))];
+        const forward = p.random() < 0.5;
+        signals.push({
+            edgeA: forward ? e.a : e.b,
+            edgeB: forward ? e.b : e.a,
+            progress: 0,
+            speed: p.random(0.008, 0.022) * params.signalSpeed,
+            size: p.random(2.5, 5.5),
+            color: getSignalColor(nodes[e.a]),
+            alpha: p.random(180, 255),
+            tail: [],
+        });
+    }
+}
+
+function getSignalColor(nd) {
+    if (!nd) return hexToRgb(params.colorSkill);
+    switch(nd.type) {
+        case 'apply':     return hexToRgb(params.colorApply);
+        case 'skill':     return hexToRgb(params.colorSkill);
+        case 'offer':     return hexToRgb(params.colorOffer);
+        case 'interview': return hexToRgb(params.colorInterview);
+        default:          return {r: 220, g: 200, b: 120};
+    }
+}
+
+function hexToRgb(hex) {
+    const r = parseInt(hex.slice(1,3), 16);
+    const g = parseInt(hex.slice(3,5), 16);
+    const b = parseInt(hex.slice(5,7), 16);
+    return {r, g, b};
+}
+
+function drawSignals(p) {
+    signals = signals.filter(s => s.progress < 1.0);
+
+    signals.forEach(s => {
+        s.progress += s.speed;
+        const a = nodes[s.edgeA], b = nodes[s.edgeB];
+        if (!a || !b) { s.progress = 1; return; }
+
+        const sx = p.lerp(a.x, b.x, s.progress);
+        const sy = p.lerp(a.y, b.y, s.progress);
+
+        s.tail.push({x: sx, y: sy});
+        if (s.tail.length > 10) s.tail.shift();
+
+        // Draw tail
+        p.noFill();
+        for (let i = 1; i < s.tail.length; i++) {
+            const ta = p.map(i, 0, s.tail.length, 0, 1);
+            const alpha = ta * s.alpha * 0.55 * params.pulseIntensity;
+            p.stroke(s.color.r, s.color.g, s.color.b, alpha);
+            p.strokeWeight(s.size * ta * 0.8);
+            p.line(s.tail[i-1].x, s.tail[i-1].y, s.tail[i].x, s.tail[i].y);
+        }
+
+        // Draw head
+        const glowAlpha = s.alpha * 0.9 * params.pulseIntensity;
+        p.noStroke();
+        p.fill(s.color.r, s.color.g, s.color.b, glowAlpha * 0.3);
+        p.ellipse(sx, sy, s.size * 3.5, s.size * 3.5);
+        p.fill(s.color.r, s.color.g, s.color.b, glowAlpha);
+        p.ellipse(sx, sy, s.size, s.size);
+        p.fill(255, 255, 255, glowAlpha * 0.7);
+        p.ellipse(sx, sy, s.size * 0.4, s.size * 0.4);
+
+        // Reinforce destination node memory
+        if (s.progress > 0.92 && b.memory < 1.0) {
+            b.memory = Math.min(1.0, b.memory + 0.004);
+        }
+    });
+}
+
+// ═══ Nodes ═════════════════════════════════════════════
+function drawNodes(p) {
+    nodes.forEach(nd => {
+        const mem    = nd.memory;
+        const pulse  = Math.sin(t * 2.2 + nd.phase) * 0.15 + 1.0;
+        const radius = nd.r * pulse;
+        const col    = getNodeColor(nd);
+
+        // Outer glow (memory strength)
+        const glowR = radius * 2.8 * mem;
+        p.noStroke();
+        p.fill(col.r, col.g, col.b, mem * 22);
+        p.ellipse(nd.x, nd.y, glowR * 2, glowR * 2);
+
+        p.fill(col.r, col.g, col.b, mem * 55);
+        p.ellipse(nd.x, nd.y, radius * 3, radius * 3);
+
+        // Body
+        p.fill(col.r, col.g, col.b, mem * 200 + 30);
+        p.ellipse(nd.x, nd.y, radius * 2, radius * 2);
+
+        // Inner highlight
+        p.fill(255, 255, 255, mem * 140);
+        p.ellipse(nd.x - radius * 0.2, nd.y - radius * 0.2, radius * 0.7, radius * 0.7);
+
+        // Hub gets a special ring
+        if (nd.type === 'hub') {
+            p.noFill();
+            p.stroke(220, 200, 120, 90 + Math.sin(t * 1.5) * 40);
+            p.strokeWeight(1.5);
+            p.ellipse(nd.x, nd.y, radius * 4, radius * 4);
+            p.stroke(220, 200, 120, 40);
+            p.ellipse(nd.x, nd.y, radius * 6, radius * 6);
+        }
+    });
+}
+
+function getNodeColor(nd) {
+    switch(nd.type) {
+        case 'apply':     return hexToRgb(params.colorApply);
+        case 'skill':     return hexToRgb(params.colorSkill);
+        case 'offer':     return hexToRgb(params.colorOffer);
+        case 'interview': return hexToRgb(params.colorInterview);
+        case 'hub':       return {r: 220, g: 200, b: 120};
+        default:          return {r: 180, g: 175, b: 165};
+    }
+}
+
+// ═══ UI Controls ═══════════════════════════════════════
+function updateParam(name, value) {
+    params[name] = value;
+    document.getElementById(name + '-value').textContent =
+        Number.isInteger(value) ? value : value.toFixed(value < 0.1 ? 3 : 2);
+
+    if (name === 'nodeCount') {
+        buildGraph();
+    }
+}
+
+function updateColor(id, value) {
+    params[id] = value;
+    document.getElementById(id + '-value').textContent = value;
+}
+
+function updateSeedDisplay() {
+    document.getElementById('seed-input').value = params.seed;
+}
+
+function updateSeed() {
+    const v = parseInt(document.getElementById('seed-input').value);
+    if (v > 0) { params.seed = v; buildGraph(); }
+    else updateSeedDisplay();
+}
+
+function previousSeed() {
+    params.seed = Math.max(1, params.seed - 1);
+    updateSeedDisplay(); buildGraph();
+}
+
+function nextSeed() {
+    params.seed++;
+    updateSeedDisplay(); buildGraph();
+}
+
+function randomSeedAndUpdate() {
+    params.seed = Math.floor(Math.random() * 999999) + 1;
+    updateSeedDisplay(); buildGraph();
+}
+
+function resetParameters() {
+    params = {...defaultParams};
+    document.getElementById('nodeCount').value      = params.nodeCount;
+    document.getElementById('nodeCount-value').textContent = params.nodeCount;
+    document.getElementById('decayRate').value      = params.decayRate;
+    document.getElementById('decayRate-value').textContent = params.decayRate.toFixed(3);
+    document.getElementById('signalSpeed').value    = params.signalSpeed;
+    document.getElementById('signalSpeed-value').textContent = params.signalSpeed.toFixed(2);
+    document.getElementById('tension').value        = params.tension;
+    document.getElementById('tension-value').textContent = params.tension.toFixed(2);
+    document.getElementById('drift').value          = params.drift;
+    document.getElementById('drift-value').textContent = params.drift.toFixed(2);
+    document.getElementById('pulseIntensity').value = params.pulseIntensity;
+    document.getElementById('pulseIntensity-value').textContent = params.pulseIntensity.toFixed(1);
+    document.getElementById('colorApply').value     = params.colorApply;
+    document.getElementById('colorApply-value').textContent = params.colorApply;
+    document.getElementById('colorSkill').value     = params.colorSkill;
+    document.getElementById('colorSkill-value').textContent = params.colorSkill;
+    document.getElementById('colorOffer').value     = params.colorOffer;
+    document.getElementById('colorOffer-value').textContent = params.colorOffer;
+    document.getElementById('colorInterview').value = params.colorInterview;
+    document.getElementById('colorInterview-value').textContent = params.colorInterview;
+    updateSeedDisplay();
+    buildGraph();
+}
+
+function downloadPNG() {
+    if (pInst) pInst.saveCanvas('career-intelligence-network', 'png');
+}
+
+window.addEventListener('load', updateSeedDisplay);
+</script>
+</body>
+</html>
