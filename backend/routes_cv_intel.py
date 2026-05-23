@@ -2,7 +2,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from db import profiles, jobs
 from auth import get_current_user
-from llm_service import llm_call, parse_json_loose
+from llm_service import parse_json_loose
+from orchestrator import orchestrator
 from activity import log_activity
 import logging
 
@@ -56,10 +57,12 @@ async def tailor_cv(job_id: str, user=Depends(get_current_user)):
     )
 
     try:
-        raw = await llm_call(
+        raw = await orchestrator.run(
+            user_id=user["user_id"],
+            feature="cv_intel",
             task="reasoning",
-            system=system,
-            user=user_prompt,
+            feature_prompt=system,
+            user_message=user_prompt,
             session_id=f"tailor_{user['user_id']}_{job_id}",
         )
         result = parse_json_loose(raw)
@@ -131,10 +134,12 @@ async def generate_cover_letter(
     )
 
     try:
-        raw = await llm_call(
+        raw = await orchestrator.run(
+            user_id=user["user_id"],
+            feature="cv_intel",
             task="reasoning",
-            system=system,
-            user=user_prompt,
+            feature_prompt=system,
+            user_message=user_prompt,
             session_id=f"cover_{user['user_id']}_{job_id}",
         )
         result = parse_json_loose(raw)
@@ -193,10 +198,12 @@ async def ats_score(job_id: str, user=Depends(get_current_user)):
     )
 
     try:
-        raw = await llm_call(
+        raw = await orchestrator.run(
+            user_id=user["user_id"],
+            feature="cv_intel",
             task="fast",
-            system=system,
-            user=user_prompt,
+            feature_prompt=system,
+            user_message=user_prompt,
             session_id=f"ats_{user['user_id']}_{job_id}",
         )
         result = parse_json_loose(raw)
@@ -252,10 +259,12 @@ async def interview_prep(job_id: str, user=Depends(get_current_user)):
     )
 
     try:
-        raw = await llm_call(
+        raw = await orchestrator.run(
+            user_id=user["user_id"],
+            feature="cv_intel",
             task="reasoning",
-            system=system,
-            user=user_prompt,
+            feature_prompt=system,
+            user_message=user_prompt,
             session_id=f"interview_{user['user_id']}_{job_id}",
         )
         result = parse_json_loose(raw)
@@ -321,10 +330,12 @@ async def salary_intelligence(job_id: str, user=Depends(get_current_user)):
     )
 
     try:
-        raw = await llm_call(
+        raw = await orchestrator.run(
+            user_id=user["user_id"],
+            feature="cv_intel",
             task="fast",
-            system=system,
-            user=user_prompt,
+            feature_prompt=system,
+            user_message=user_prompt,
             session_id=f"salary_{user['user_id']}_{job_id}",
         )
         result = parse_json_loose(raw)

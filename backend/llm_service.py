@@ -8,6 +8,7 @@ task="structured" → GPT-4         (guaranteed JSON schema)
 
 Circuit breaker: per-provider sliding-window (10 calls, >50% errors → open for 60s).
 """
+import asyncio
 import json
 import logging
 import os
@@ -164,7 +165,15 @@ async def llm_call(*, task: TaskType, system: str, user: str,
     """Primary → Emergent. Fallback → direct APIs (circuit-breaker protected)."""
     emergent_err = None
     try:
-        result = await _call_emergent(task, system, user, session_id)
+        from config import settings as _s
+        _timeout = _s.LLM_TIMEOUT_S
+    except Exception:
+        _timeout = 45
+    try:
+        result = await asyncio.wait_for(
+            _call_emergent(task, system, user, session_id),
+            timeout=_timeout,
+        )
         _cb.record("emergent", True)
         return result
     except Exception as ex:

@@ -122,7 +122,7 @@ async def fetch_adzuna(country: str, query: str = "", limit: int = 25) -> List[D
     }
     if query:
         params["what"] = query
-    async with httpx.AsyncClient(timeout=20.0) as client:
+    async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=5.0)) as client:
         r = await client.get(url, params=params)
         r.raise_for_status()
         payload = r.json()
@@ -148,7 +148,7 @@ async def fetch_jooble(query: str = "", location: str = "Lisbon", limit: int = 2
         raise RuntimeError("Jooble API key missing.")
     url = JOOBLE_URL.format(key=key)
     body = {"keywords": query or "engineer", "location": location}
-    async with httpx.AsyncClient(timeout=20.0) as client:
+    async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=5.0)) as client:
         r = await client.post(url, json=body, headers={"Content-Type": "application/json"})
         r.raise_for_status()
         payload = r.json()
@@ -172,7 +172,7 @@ async def fetch_remotive(query: str = "", limit: int = 25) -> List[Dict[str, Any
     params = {"limit": limit}
     if query:
         params["search"] = query
-    async with httpx.AsyncClient(timeout=20.0) as client:
+    async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=5.0)) as client:
         r = await client.get(REMOTIVE_URL, params=params)
         r.raise_for_status()
         payload = r.json()
@@ -197,7 +197,7 @@ async def fetch_weworkremotely(query: str = "", limit: int = 20) -> List[Dict[st
     """WeWorkRemotely — remote tech jobs globally. No API key needed."""
     out = []
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=5.0)) as client:
             r = await client.get(WEWORKREMOTELY_URL, headers={"User-Agent": "CareerOS/2.0"})
             if r.status_code != 200:
                 return []
@@ -235,7 +235,7 @@ async def fetch_remoteok(query: str = "", limit: int = 20) -> List[Dict[str, Any
     """RemoteOK — remote global jobs. No API key needed."""
     out = []
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=5.0)) as client:
             r = await client.get(REMOTEOK_URL,
                 headers={"User-Agent": "CareerOS/2.0", "Accept": "application/json"})
             if r.status_code != 200:
@@ -281,7 +281,7 @@ async def fetch_net_empregos(query: str = "", limit: int = 20) -> List[Dict[str,
         if query:
             import urllib.parse
             url += f"&keyword={urllib.parse.quote(query)}"
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=5.0)) as client:
             r = await client.get(url, headers={"User-Agent": "CareerOS/2.0"})
             if r.status_code != 200:
                 return []

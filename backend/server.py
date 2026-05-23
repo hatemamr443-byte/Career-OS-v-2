@@ -277,6 +277,32 @@ async def cron_welcome_emails(request: Request):
     return await run_drip_sequence()
 
 
+@app.post("/api/internal/run-daily-digest")
+async def run_daily_digest_endpoint(request: Request):
+    """Cron — triggers daily job-match digest."""
+    if request.headers.get("x-cron-token","") != os.environ.get("CRON_TOKEN",""):
+        from fastapi import HTTPException
+        raise HTTPException(401, "Unauthorized")
+    from fastapi.background import BackgroundTasks
+    from daily_digest import run_daily_digest
+    bg = BackgroundTasks()
+    bg.add_task(run_daily_digest)
+    return {"ok": True, "message": "Digest running in background"}
+
+
+@app.post("/api/internal/consolidate-memory")
+async def consolidate_memory_endpoint(request: Request):
+    """Daily cron — consolidates career events into AI notes."""
+    if request.headers.get("x-cron-token","") != os.environ.get("CRON_TOKEN",""):
+        from fastapi import HTTPException
+        raise HTTPException(401, "Unauthorized")
+    from fastapi.background import BackgroundTasks
+    from memory_consolidation import run_consolidation_batch
+    bg = BackgroundTasks()
+    bg.add_task(run_consolidation_batch)
+    return {"ok": True, "message": "Memory consolidation running in background"}
+
+
 @app.get("/api/billing/ai-usage")
 async def ai_usage_route(user=Depends(get_current_user)):
     """Expose AI usage summary for the frontend."""
@@ -289,6 +315,19 @@ async def ai_usage_route(user=Depends(get_current_user)):
     summary = await get_ai_usage_summary(user["user_id"], plan)
     return {"plan": plan, "usage": summary}
 
+
+# Request correlation ID for distributed tracing
+from starlette.middleware.base import BaseHTTPMiddleware
+import uuid as _uuid
+
+class _RequestIDMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        req_id = request.headers.get('x-request-id') or _uuid.uuid4().hex[:12]
+        response = await call_next(request)
+        response.headers['x-request-id'] = req_id
+        return response
+
+app.add_middleware(_RequestIDMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
