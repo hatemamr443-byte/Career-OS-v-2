@@ -2,6 +2,7 @@
 import logging
 import os
 from pathlib import Path
+import uuid as _uuid
 
 # ── CRITICAL: Load .env BEFORE any module imports ──────────────────
 from dotenv import load_dotenv
@@ -13,6 +14,7 @@ load_dotenv(ROOT_DIR / ".env")
 from logging_config import configure_logging
 from fastapi import Depends, FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from auth import get_current_user, router as auth_router
 from routes_activity import router as activity_router
@@ -317,9 +319,6 @@ async def ai_usage_route(user=Depends(get_current_user)):
 
 
 # Request correlation ID for distributed tracing
-from starlette.middleware.base import BaseHTTPMiddleware
-import uuid as _uuid
-
 class _RequestIDMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         req_id = request.headers.get('x-request-id') or _uuid.uuid4().hex[:12]
