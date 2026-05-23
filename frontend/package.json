@@ -86,7 +86,8 @@
     "eslint-plugin-react-hooks": "5.2.0",
     "globals": "15.15.0",
     "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.17"
+    "tailwindcss": "^3.4.17",
+    "dotenv": "^16.4.5"
   },
   "packageManager": "npm@10.8.2"
 }

@@ -116,8 +116,10 @@ jobs:
         env:
           REACT_APP_BACKEND_URL: http://127.0.0.1:8001
           ENABLE_HEALTH_CHECK: "false"
-          # CI=false prevents treating warnings as errors in CRA
+          # CI=false prevents CRA from treating warnings as errors
           CI: "false"
+          # OpenSSL compatibility for Node 24 + webpack 4 (react-scripts 5)
+          NODE_OPTIONS: --openssl-legacy-provider
         run: npm run build
 
   # ── Secrets scan ─────────────────────────────────────────────
