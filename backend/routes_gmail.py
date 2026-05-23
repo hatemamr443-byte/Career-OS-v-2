@@ -128,7 +128,7 @@ async def _fresh_token(refresh_token: str) -> str | None:
 
 
 async def _classify_email(from_addr: str, subject: str, snippet: str) -> dict:
-    """Classify a single email with Gemini Flash."""
+    """Classify a single email. Uses llm_call directly (no user context available)."""
     try:
         text = await llm_call(
             task="fast",

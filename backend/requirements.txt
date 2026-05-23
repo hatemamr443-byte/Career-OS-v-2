@@ -45,3 +45,6 @@ google-generativeai>=0.8.0
 
 # ── PDF generation (used in tests for PDF upload simulation) ──
 reportlab>=4.0.0
+
+# ── Optional observability ────────────────────────────────────
+# langfuse>=2.0.0       # Uncomment to enable AI tracing

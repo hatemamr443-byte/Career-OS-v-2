@@ -2,7 +2,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from db import emails
 from auth import get_current_user
-from llm_service import llm_call, parse_json_loose
+from llm_service import parse_json_loose
+from orchestrator import orchestrator
 
 router = APIRouter(prefix="/api/emails", tags=["emails"])
 
@@ -50,10 +51,12 @@ async def classify_email(email_id: str, user=Depends(get_current_user)):
     )
     user_prompt = f"FROM: {e['from_name']} <{e['from_addr']}>\nSUBJECT: {e['subject']}\nBODY:\n{e['body']}"
     try:
-        text = await llm_call(
+        text = await orchestrator.run(
+            user_id=user["user_id"],
+            feature="emails_classify",
             task="fast",
-            system=system,
-            user=user_prompt,
+            feature_prompt=system,
+            user_message=user_prompt,
             session_id=f"email_{email_id}",
         )
         data = parse_json_loose(text)
