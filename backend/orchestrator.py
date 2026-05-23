@@ -25,6 +25,8 @@ from llm_service import llm_call, parse_json_loose
 from career_intelligence import CareerIntelligence
 from memory_service import MemoryService
 from event_bus import event_bus
+from working_memory import working_memory
+from episodic_memory import record_from_event
 
 logger = logging.getLogger(__name__)
 ai_telemetry = mongo_db.ai_telemetry
@@ -74,6 +76,14 @@ class Orchestrator:
                 parts.append(ctx_block)
         except Exception as ex:
             logger.warning("Career context failed for user=%s: %s", user_id, ex)
+
+        # Working memory — active session context
+        try:
+            wm_block = working_memory.get_prompt_block(user_id)
+            if wm_block:
+                parts.append(wm_block)
+        except Exception as ex:
+            logger.debug("Working memory failed: %s", ex)
 
         # The feature-specific instructions go last (closest to user message).
         parts.append(feature_prompt)
@@ -273,3 +283,13 @@ def wire_subscribers() -> None:
     event_bus.subscribe("job_applied",         on_job_applied)
     event_bus.subscribe("recruiter_reachout",  on_recruiter_reachout)
     event_bus.subscribe("bookmark_added",      on_bookmark_added)
+
+    # Episodic memory — auto-record high-signal career episodes
+    async def _record_episode(user_id: str, data: dict, evt: str) -> None:
+        try:
+            await record_from_event(user_id, evt, data)
+        except Exception as ex:
+            logger.debug("Episodic record failed evt=%s: %s", evt, ex)
+
+    for _evt in ("offer_received", "job_rejected", "interview_completed", "cv_tailored"):
+        event_bus.subscribe(_evt, lambda u, d, e=_evt: _record_episode(u, d, e))
