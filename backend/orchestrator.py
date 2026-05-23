@@ -26,7 +26,7 @@ from career_intelligence import CareerIntelligence
 from memory_service import MemoryService
 from event_bus import event_bus
 from working_memory import working_memory
-from episodic_memory import record_from_event
+from episodic_memory import record_from_event, episodes_prompt_block
 
 logger = logging.getLogger(__name__)
 ai_telemetry = mongo_db.ai_telemetry
@@ -76,6 +76,14 @@ class Orchestrator:
                 parts.append(ctx_block)
         except Exception as ex:
             logger.warning("Career context failed for user=%s: %s", user_id, ex)
+
+        # Episodic memory — key career milestones and decisions
+        try:
+            ep_block = await episodes_prompt_block(user_id, k=3)
+            if ep_block:
+                parts.append(ep_block)
+        except Exception as ex:
+            logger.debug("Episodic memory failed: %s", ex)
 
         # Working memory — active session context
         try:

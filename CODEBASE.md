@@ -57,6 +57,10 @@
 | `career_intelligence.py` | 325 | **Unified Brain.** Context at 3 depths (minimal/standard/full). Career graph. Cross-feature signals | `CareerIntelligence.get_context()`, `.cross_feature_signals()`, `.update_ai_notes()` |
 | `memory_service.py` | ~220 | Decay-scored recall. Merges `career_events`+`activity_logs`. Weighted by event type+age | `MemoryService.recall()`, `.recall_v2()`, `.recall_prompt_block()`, `MEMORY_WEIGHTS` |
 | `insights_service.py` | ~180 | Pure-aggregation insight synthesis (no AI). Patterns from cross-feature data | `generate_insights()` |
+| `working_memory.py` | ~110 | In-process TTL session cache. Stores what user did last 30min. Injected into every prompt | `working_memory.set/get/get_prompt_block()` |
+| `episodic_memory.py` | ~150 | Durable career episodes (milestone/decision/failure/session). Auto-recorded from events | `record_episode()`, `recall_episodes()`, `episodes_prompt_block()`, `record_from_event()` |
+| `langfuse_tracer.py` | ~110 | Langfuse AI observability. Async context manager wrapping every orchestrator.run() | `tracer.span()` (noop if LANGFUSE_PUBLIC_KEY not set) |
+| `firecrawl_adapter.py` | ~120 | Firecrawl web intelligence. scrape() + search() + search_jobs(). httpx fallback | `firecrawl.scrape()`, `.search()`, `.search_jobs()` |
 | `memory_consolidation.py` | ~110 | Background cron: events → AI notes → career_graph. Runs daily, skips users updated < 7 days | `consolidate_user_memory()`, `run_consolidation_batch()` |
 
 ### Event / Activity Layer
@@ -90,6 +94,7 @@
 | `routes_emails.py` | `/api/emails` | POST /classify | ✅ email_classify |
 | `routes_notifications.py` | `/api/notifications` | GET /, POST /{id}/read | ❌ |
 | `routes_orchestrator.py` | `/api/orchestrator` | GET /health, GET /context, POST /run | ✅ |
+| `routes_memory.py` | `/api/memory` | GET /episodes, POST /episodes, GET /working, GET /stats, POST /consolidate | ❌ |
 | `routes_admin.py` | `/admin` | GET /telemetry, /event-bus, /circuit-breakers, POST /outbox/replay, GET /memory/{uid}, GET /system | ❌ |
 
 ### Support Modules

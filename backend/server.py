@@ -33,6 +33,7 @@ from routes_notifications import router as notifications_router
 from routes_onboarding import router as onboarding_router
 from routes_orchestrator import router as orchestrator_router
 from routes_admin import router as admin_router
+from routes_memory import router as memory_router
 from routes_profile import router as profile_router
 from routes_salary import router as salary_router
 from seed import seed_jobs_if_empty, seed_user_emails, seed_user_profile
@@ -126,6 +127,7 @@ app.include_router(gdpr_router)
 app.include_router(decision_router)
 app.include_router(orchestrator_router)
 app.include_router(admin_router)
+app.include_router(memory_router)
 
 
 @app.get("/health")
@@ -201,6 +203,15 @@ async def seed_for_user(user=Depends(get_current_user)):
 
 @app.on_event("startup")
 async def on_startup():
+    _startup_logger = logging.getLogger(__name__)
+    # Startup config validation
+    from config import settings as _cfg
+    warnings = _cfg.validate_startup()
+    for w in warnings:
+        _startup_logger.warning("STARTUP CONFIG: %s", w)
+    if warnings:
+        _startup_logger.warning("Fix the above before going to production.")
+
     await seed_jobs_if_empty()
     # Ensure dedupe race-safety on jobs.content_hash (partial index — only docs that have the field)
     try:

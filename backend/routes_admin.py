@@ -233,6 +233,9 @@ async def system_snapshot(x_admin_token: str = Header(default="")):
         "event_bus": event_bus.stats(),
         "circuit_breakers": _get_cb_status(),
         "outbox_pending": outbox_pending,
+        "working_memory": __import__("working_memory").working_memory.stats(),
+        "langfuse": __import__("langfuse_tracer").tracer.status(),
+        "firecrawl": __import__("firecrawl_adapter").firecrawl.status(),
         "environment": os.environ.get("ENVIRONMENT", "development"),
         "version": "2.1.0",
     }
