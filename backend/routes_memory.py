@@ -32,13 +32,17 @@ async def list_episodes(
     user=Depends(get_current_user),
 ):
     """List user's career episodes ordered by importance × recency."""
-    episodes = await recall_episodes(
-        user["user_id"],
-        episode_type=episode_type,
-        k=k,
-        min_importance=min_importance,
-    )
-    return {"episodes": episodes, "count": len(episodes)}
+    try:
+        episodes = await recall_episodes(
+            user["user_id"],
+            episode_type=episode_type,
+            k=k,
+            min_importance=min_importance,
+        )
+        return {"episodes": episodes, "count": len(episodes)}
+    except Exception as ex:
+        logger.error("list_episodes failed user=%s: %s", user["user_id"], ex)
+        raise HTTPException(500, "Failed to retrieve episodes.")
 
 
 @router.get("/episodes/{episode_id}")
@@ -101,33 +105,34 @@ async def get_working_memory(user=Depends(get_current_user)):
 async def memory_stats(user=Depends(get_current_user)):
     """Memory system statistics for the current user."""
     uid = user["user_id"]
+    try:
+        episode_count  = await mongo_db.episodes.count_documents({"user_id": uid})
+        event_count    = await mongo_db.career_events.count_documents({"user_id": uid})
+        activity_count = await mongo_db.activity_logs.count_documents({"user_id": uid})
 
-    episode_count = await mongo_db.episodes.count_documents({"user_id": uid})
-    event_count   = await mongo_db.career_events.count_documents({"user_id": uid})
-    activity_count = await mongo_db.activity_logs.count_documents({"user_id": uid})
+        pipeline = [
+            {"$match": {"user_id": uid}},
+            {"$group": {"_id": "$episode_type", "count": {"$sum": 1},
+                        "avg_importance": {"$avg": "$importance"}}},
+        ]
+        breakdown = await mongo_db.episodes.aggregate(pipeline).to_list(10)
 
-    # Episode breakdown by type
-    pipeline = [
-        {"$match": {"user_id": uid}},
-        {"$group": {"_id": "$episode_type", "count": {"$sum": 1},
-                    "avg_importance": {"$avg": "$importance"}}},
-    ]
-    breakdown = await mongo_db.episodes.aggregate(pipeline).to_list(10)
+        graph = await mongo_db.career_graph.find_one(
+            {"user_id": uid}, {"_id": 0, "ai_notes": 1, "notes_updated_at": 1}
+        ) or {}
 
-    # Latest AI notes from career graph
-    graph = await mongo_db.career_graph.find_one(
-        {"user_id": uid}, {"_id": 0, "ai_notes": 1, "notes_updated_at": 1}
-    ) or {}
-
-    return {
-        "episodes":       episode_count,
-        "career_events":  event_count,
-        "activity_logs":  activity_count,
-        "episode_breakdown": breakdown,
-        "ai_notes":       graph.get("ai_notes", ""),
-        "notes_updated_at": graph.get("notes_updated_at", ""),
-        "working_memory": working_memory.get(uid, k=8),
-    }
+        return {
+            "episodes":         episode_count,
+            "career_events":    event_count,
+            "activity_logs":    activity_count,
+            "episode_breakdown": breakdown,
+            "ai_notes":         graph.get("ai_notes", ""),
+            "notes_updated_at": graph.get("notes_updated_at", ""),
+            "working_memory":   working_memory.get(uid, k=8),
+        }
+    except Exception as ex:
+        logger.error("memory_stats failed user=%s: %s", uid, ex)
+        raise HTTPException(500, "Failed to retrieve memory stats.")
 
 
 # ── Manual Consolidation ──────────────────────────────────────────
