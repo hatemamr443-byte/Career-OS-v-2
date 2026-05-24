@@ -44,7 +44,7 @@
 | `server.py` | ~240 | App entry. Registers 21 routers, CORS, RequestID middleware, startup, cron endpoints | `app` |
 | `config.py` | 149 | Typed settings from env vars. Feature flags: `has_sentry`, `has_stripe`, `has_any_llm` | `settings` |
 | `logging_config.py` | ~90 | JSON logs (prod) + coloured dev. Called first after dotenv load | `configure_logging()` |
-| `db.py` | ~40 | Motor async collections. All exported as globals | `db, users, profiles, jobs, applications, career_events, activity_logs, cv_versions, interview_sessions, missions, …` |
+| `db.py` | ~40 | Motor async collections. All exported as globals | `db, users, profiles, jobs, applications, career_events, activity_logs, episodes, events_outbox, ai_telemetry, …` + `init_indexes()` |
 | `models.py` | ~60 | Pydantic models + prefixed ULID generator | `new_id(prefix)` |
 | `auth.py` | 137 | Emergent Google OAuth. Session validation. FastAPI dep | `get_current_user` |
 
@@ -107,6 +107,7 @@
 | `emailer.py` | ~80 | Resend sender + `render_daily_digest()` |
 | `welcome_emails.py` | ~120 | Day 0/1/3/7 drip sequences |
 | `job_sources.py` | 376 | Connectors: Adzuna, Jooble, Remotive, WeWorkRemotely, RemoteOK, Net-empregos. Unified 15s timeout |
+| `tests/test_memory_system.py` | 90 | Unit tests for working_memory + episodic_memory + /api/memory/* endpoints |
 | `seed.py` | ~60 | Dev seed data |
 
 ---

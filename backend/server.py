@@ -213,6 +213,8 @@ async def on_startup():
     if warnings:
         _startup_logger.warning("Fix the above before going to production.")
 
+    from db import init_indexes
+    await init_indexes()
     await seed_jobs_if_empty()
     # Ensure dedupe race-safety on jobs.content_hash (partial index — only docs that have the field)
     try:
