@@ -206,7 +206,6 @@ async def seed_for_user(user=Depends(get_current_user)):
 async def on_startup():
     _startup_logger = logging.getLogger(__name__)
     # Startup config validation
-    from config import settings as _cfg
     warnings = _cfg.validate_startup()
     for w in warnings:
         _startup_logger.warning("STARTUP CONFIG: %s", w)
