@@ -21,6 +21,7 @@ const NAV_MAIN = [
     { to: "/emails",     label: "Inbox",        icon: EnvelopeSimple },
     { to: "/timeline",   label: "Timeline",     icon: CalendarBlank  },
     { to: "/insights",   label: "Insights",     icon: ChartLine      },
+    { to: "/memory",     label: "Memory",     icon: Archive     },
     { to: "/career-map", label: "Career Map",   icon: Graph      },
 ];
 

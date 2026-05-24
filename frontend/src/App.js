@@ -6,6 +6,7 @@ import AuthCallback          from "./components/AuthCallback";
 import Landing               from "./pages/Landing";
 import Pricing               from "./pages/Pricing";
 import Login                 from "./pages/Login";
+import MemoryDashboard from './pages/MemoryDashboard';
 import Dashboard             from "./pages/Dashboard";
 import Jobs                  from "./pages/Jobs";
 import JobDetail             from "./pages/JobDetail";
@@ -47,7 +48,8 @@ function AppRouter() {
                 <Route path="/jobs/:id"           element={<JobDetail />} />
                 <Route path="/emails"             element={<Emails />} />
                 <Route path="/insights"           element={<Insights />} />
-                <Route path="/career-map"         element={<CareerMap />} />
+                <Route path="/memory" element={<MemoryDashboard />} />
+          <Route path="/career-map"         element={<CareerMap />} />
                 <Route path="/profile"            element={<Profile />} />
                 <Route path="/billing"            element={<Billing />} />
                 <Route path="/bookmarks"          element={<Bookmarks />} />

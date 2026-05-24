@@ -352,7 +352,7 @@ app.add_middleware(_RequestIDMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
+    allow_origins=_cfg.CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
