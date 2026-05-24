@@ -77,6 +77,8 @@ def _validate_environment() -> None:
 # Configure logging AFTER env is loaded
 configure_logging()
 
+from config import settings as _cfg  # noqa: E402
+
 # Validate environment on module load
 _validate_environment()
 
