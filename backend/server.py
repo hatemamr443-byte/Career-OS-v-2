@@ -213,8 +213,15 @@ async def on_startup():
     if warnings:
         _startup_logger.warning("Fix the above before going to production.")
 
-    from db import init_indexes
-    await init_indexes()
+    import asyncio
+    # Run indexes in background — don't block /health endpoint
+    async def _bg_init():
+        from db import init_indexes
+        try:
+            await init_indexes()
+        except Exception as ex:
+            logging.getLogger(__name__).warning('Index init failed: %s', ex)
+    asyncio.create_task(_bg_init())
     await seed_jobs_if_empty()
     # Ensure dedupe race-safety on jobs.content_hash (partial index — only docs that have the field)
     try:

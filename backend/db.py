@@ -46,31 +46,29 @@ user_sessions      = db.user_sessions      # auth sessions
 
 
 async def init_indexes() -> None:
-    """Create all MongoDB indexes. Called once at startup."""
-    # Users
-    await db.users.create_index("user_id", unique=True, sparse=True)
-    await db.user_sessions.create_index("session_token", unique=True)
-    await db.user_sessions.create_index("expires_at")
-    # Jobs + Applications
-    await db.jobs.create_index([("user_id", 1), ("created_at", -1)])
-    await db.jobs.create_index("content_hash", sparse=True)
-    await db.applications.create_index([("user_id", 1), ("status", 1)])
-    await db.applications.create_index([("user_id", 1), ("created_at", -1)])
-    # Intelligence
-    await db.career_events.create_index([("user_id", 1), ("created_at", -1)])
-    await db.career_events.create_index([("user_id", 1), ("event_type", 1)])
-    await db.activity_logs.create_index([("user_id", 1), ("created_at", -1)])
-    await db.career_graph.create_index("user_id", unique=True, sparse=True)
-    # Episodic memory
-    await db.episodes.create_index([("user_id", 1), ("created_at", -1)])
-    await db.episodes.create_index([("user_id", 1), ("importance", -1)])
-    await db.episodes.create_index([("user_id", 1), ("episode_type", 1)])
-    # Telemetry + outbox
-    await db.ai_telemetry.create_index([("user_id", 1), ("created_at", -1)])
-    await db.ai_telemetry.create_index("feature")
-    await db.events_outbox.create_index([("delivered", 1), ("created_at", 1)])
-    # Notifications + gamification
-    await db.notifications.create_index([("user_id", 1), ("read", 1)])
-    await db.missions.create_index([("user_id", 1), ("date", 1)], unique=True, sparse=True)
-    await db.cv_versions.create_index([("user_id", 1), ("created_at", -1)])
-    await db.interview_sessions.create_index([("user_id", 1), ("created_at", -1)])
+    """Create all MongoDB indexes in parallel. Called once at startup."""
+    import asyncio
+    await asyncio.gather(
+        db.users.create_index("user_id", unique=True, sparse=True),
+        db.user_sessions.create_index("session_token", unique=True),
+        db.user_sessions.create_index("expires_at"),
+        db.jobs.create_index([("user_id", 1), ("created_at", -1)]),
+        db.jobs.create_index("content_hash", sparse=True),
+        db.applications.create_index([("user_id", 1), ("status", 1)]),
+        db.applications.create_index([("user_id", 1), ("created_at", -1)]),
+        db.career_events.create_index([("user_id", 1), ("created_at", -1)]),
+        db.career_events.create_index([("user_id", 1), ("event_type", 1)]),
+        db.activity_logs.create_index([("user_id", 1), ("created_at", -1)]),
+        db.career_graph.create_index("user_id", unique=True, sparse=True),
+        db.episodes.create_index([("user_id", 1), ("created_at", -1)]),
+        db.episodes.create_index([("user_id", 1), ("importance", -1)]),
+        db.episodes.create_index([("user_id", 1), ("episode_type", 1)]),
+        db.ai_telemetry.create_index([("user_id", 1), ("created_at", -1)]),
+        db.ai_telemetry.create_index("feature"),
+        db.events_outbox.create_index([("delivered", 1), ("created_at", 1)]),
+        db.notifications.create_index([("user_id", 1), ("read", 1)]),
+        db.missions.create_index([("user_id", 1), ("date", 1)], unique=True, sparse=True),
+        db.cv_versions.create_index([("user_id", 1), ("created_at", -1)]),
+        db.interview_sessions.create_index([("user_id", 1), ("created_at", -1)]),
+        return_exceptions=True,
+    )

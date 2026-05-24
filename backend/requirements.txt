@@ -48,3 +48,4 @@ reportlab>=4.0.0
 
 # ── Optional observability ────────────────────────────────────
 langfuse>=2.0.0         # AI observability — graceful noop if LANGFUSE_PUBLIC_KEY not set
+                        # Remove from requirements if CI is slow (tracer degrades silently)
