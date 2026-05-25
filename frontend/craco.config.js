@@ -37,6 +37,17 @@ let webpackConfig = {
       '@': path.resolve(__dirname, 'src'),
     },
     configure: (webpackConfig) => {
+      // Disable ForkTsCheckerWebpackPlugin — project is JS-only, not TypeScript.
+      // This plugin uses an incompatible version of ajv-keywords that crashes
+      // on Node 22+ (TypeError: Cannot read properties of undefined 'date').
+      const ForkTsCheckerWebpackPlugin = webpackConfig.plugins.find(
+        (plugin) => plugin.constructor.name === "ForkTsCheckerWebpackPlugin"
+      );
+      if (ForkTsCheckerWebpackPlugin) {
+        webpackConfig.plugins = webpackConfig.plugins.filter(
+          (plugin) => plugin.constructor.name !== "ForkTsCheckerWebpackPlugin"
+        );
+      }
 
       // Add ignored patterns to reduce watched directories
         webpackConfig.watchOptions = {
