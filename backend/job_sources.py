@@ -21,6 +21,10 @@ from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 from db import jobs as jobs_col
 from models import new_id
+import logging
+from firecrawl_adapter import firecrawl
+
+logger = logging.getLogger(__name__)
 
 REMOTIVE_URL      = "https://remotive.com/api/remote-jobs"
 ADZUNA_URL        = "https://api.adzuna.com/v1/api/jobs/{country}/search/1"
@@ -374,3 +378,22 @@ async def ingest_remotive(query: str = "", limit: int = 30) -> Dict[str, int]:
     docs = await fetch_remotive(query=query, limit=limit)
     inserted = await _insert_dedup(docs)
     return {"fetched": len(docs), "inserted": inserted, "skipped_duplicates": len(docs) - inserted}
+
+
+async def search_jobs_web(
+    title: str,
+    location: str = "",
+    limit: int = 8,
+) -> list[dict]:
+    """
+    Web-intelligence job search using Firecrawl when configured.
+    Falls back to empty list if FIRECRAWL_API_KEY not set.
+    Supplements (not replaces) existing job source connectors.
+    """
+    if not firecrawl.is_enabled:
+        return []
+    try:
+        return await firecrawl.search_jobs(title, location=location, limit=limit)
+    except Exception as ex:
+        logger.warning("Firecrawl search_jobs failed: %s", ex)
+        return []

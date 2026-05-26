@@ -26,6 +26,7 @@ from career_intelligence import CareerIntelligence
 from memory_service import MemoryService
 from event_bus import event_bus
 from working_memory import working_memory
+from langfuse_tracer import tracer as lf_tracer
 from episodic_memory import record_from_event, episodes_prompt_block
 
 logger = logging.getLogger(__name__)
@@ -130,9 +131,14 @@ class Orchestrator:
         text = ""
 
         try:
-            text = await llm_call(
-                task=task, system=system, user=user_message, session_id=sid,
-            )
+            async with lf_tracer.span(
+                user_id, feature, task,
+                system_prompt=system[:400], user_message=user_message[:300],
+            ) as _lf_span:
+                text = await llm_call(
+                    task=task, system=system, user=user_message, session_id=sid,
+                )
+                _lf_span.set_output(text[:300] if text else "")
             return text
         except Exception as ex:
             success = False

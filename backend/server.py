@@ -35,6 +35,7 @@ from routes_onboarding import router as onboarding_router
 from routes_orchestrator import router as orchestrator_router
 from routes_admin import router as admin_router
 from routes_memory import router as memory_router
+from routes_extension import router as extension_router
 from routes_profile import router as profile_router
 from routes_salary import router as salary_router
 from seed import seed_jobs_if_empty, seed_user_emails, seed_user_profile
@@ -131,6 +132,7 @@ app.include_router(decision_router)
 app.include_router(orchestrator_router)
 app.include_router(admin_router)
 app.include_router(memory_router)
+app.include_router(extension_router)
 
 
 @app.get("/health")

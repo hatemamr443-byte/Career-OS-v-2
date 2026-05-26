@@ -71,3 +71,6 @@ coverage.xml
 
 # Langfuse
 .langfuse/
+# Local env overrides
+*.env.local
+backend/tests/__pycache__/
