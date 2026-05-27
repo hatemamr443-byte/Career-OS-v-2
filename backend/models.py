@@ -123,3 +123,15 @@ class CoachMessage(BaseModel):
     role: Literal["user", "assistant"]
     content: str
     created_at: datetime = Field(default_factory=now_utc)
+
+
+# ─── Billing Models ──────────────────────────────────────────
+class CheckoutRequest(BaseModel):
+    """Request to create a Stripe checkout session."""
+    plan_id: Literal["pro", "team"]  # Only valid plans allowed
+    origin_url: str  # Return URL after checkout
+
+
+class ReferralApplyRequest(BaseModel):
+    """Request to apply a referral code."""
+    code: str  # Referral code to apply

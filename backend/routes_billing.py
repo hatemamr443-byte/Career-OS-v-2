@@ -11,7 +11,7 @@ from emergentintegrations.payments.stripe.checkout import (
 
 from db import users, db as mongo_db
 from auth import get_current_user
-from models import new_id
+from models import new_id, CheckoutRequest, ReferralApplyRequest
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 
@@ -157,9 +157,10 @@ async def referral_stats(user=Depends(get_current_user)):
 
 
 @router.post("/referral/apply")
-async def apply_referral(payload: dict, user=Depends(get_current_user)):
+async def apply_referral(payload: ReferralApplyRequest, user=Depends(get_current_user)):
     """Apply a referral code when a new user signs up."""
-    code = (payload.get("code") or "").strip()
+    code = payload.code.strip()
+    
     if not code:
         raise HTTPException(400, "Referral code is required.")
 
@@ -264,14 +265,14 @@ async def my_plan(user=Depends(get_current_user)):
 
 @router.post("/checkout")
 async def create_checkout(
-    payload: dict,
+    payload: CheckoutRequest,  # Now validated by Pydantic
     http_request: Request,
     user=Depends(get_current_user),
 ):
-    plan_id = payload.get("plan_id")
-    origin_url = payload.get("origin_url", "").rstrip("/")
-    if plan_id not in PLANS:
-        raise HTTPException(400, "Invalid plan")
+    # Payload is now validated: plan_id must be "pro" or "team", origin_url must be present
+    plan_id = payload.plan_id
+    origin_url = payload.origin_url.rstrip("/")
+    
     if not origin_url:
         raise HTTPException(400, "origin_url required")
 
