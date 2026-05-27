@@ -1,4 +1,5 @@
 """Stripe billing: Pro / Team monthly plans (one-time charge, 30 days access)."""
+import logging
 import os
 import stripe as stripe_sdk
 from datetime import datetime, timezone, timedelta
@@ -40,24 +41,30 @@ def _stripe(http_request: Request) -> StripeCheckout:
 
 @router.post("/start-trial")
 async def start_trial(user=Depends(get_current_user)):
-    """Activate a 7-day free Pro trial. One per user, no credit card needed."""
-    user_doc = await users.find_one({"user_id": user["user_id"]}) or {}
-
-    if user_doc.get("trial_used"):
-        raise HTTPException(400, "You have already used your free trial.")
-
-    if (user_doc.get("plan") or "free") != "free":
-        raise HTTPException(400, "Your account already has an active plan.")
-
+    """Activate a 7-day free Pro trial. One per user, no credit card needed.
+    
+    Uses atomic MongoDB update to prevent double-activation race conditions.
+    """
     trial_end = datetime.now(timezone.utc) + timedelta(days=TRIAL_DAYS)
-    await users.update_one(
-        {"user_id": user["user_id"]},
-        {"$set": {
-            "trial_active":    True,
-            "trial_used":      True,
-            "trial_ends_at":   trial_end.isoformat(),
-        }},
+    
+    # ATOMIC: Update only if trial_used is not already set
+    # This prevents the race condition where two simultaneous requests could both activate trial
+    result = await users.update_one(
+        {
+            "user_id": user["user_id"],
+            "trial_used": {"$ne": True},  # Only update if trial NOT already used
+        },
+        {
+            "$set": {
+                "trial_active":    True,
+                "trial_used":      True,
+                "trial_ends_at":   trial_end.isoformat(),
+            }
+        },
     )
+    
+    if result.matched_count == 0:
+        raise HTTPException(400, "You have already used your free trial.")
 
     # Log activity
     try:
@@ -385,15 +392,39 @@ webhook_router = APIRouter(tags=["billing"])
 
 @webhook_router.post("/api/webhook/stripe")
 async def stripe_webhook(request: Request):
+    """Handle Stripe webhook events with signature verification.
+    
+    CRITICAL: Validates webhook signing secret before processing any event.
+    Fails hard if Stripe keys are not configured.
+    """
+    # CRITICAL: Validate Stripe keys are configured
+    stripe_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
+    stripe_key = os.environ.get("STRIPE_SECRET_KEY")
+    
+    if not stripe_secret or not stripe_key:
+        logger = logging.getLogger(__name__)
+        logger.error("⚠️  Stripe webhook received but STRIPE keys not configured")
+        raise HTTPException(
+            500,
+            "Stripe is not configured. Set STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET."
+        )
+    
     body = await request.body()
     sig = request.headers.get("Stripe-Signature", "")
-    api_key = os.environ.get("STRIPE_SECRET_KEY", "")
+    
+    if not sig:
+        logger = logging.getLogger(__name__)
+        logger.warning("⚠️  Stripe webhook missing Stripe-Signature header (forged request?)")
+        raise HTTPException(400, "Missing Stripe-Signature header")
+    
     host_url = str(request.base_url).rstrip("/")
-    stripe = StripeCheckout(api_key=api_key, webhook_url=f"{host_url}/api/webhook/stripe")
+    stripe = StripeCheckout(api_key=stripe_key, webhook_url=f"{host_url}/api/webhook/stripe")
     try:
         event = await stripe.handle_webhook(body, sig)
     except Exception as ex:
-        raise HTTPException(400, f"Webhook error: {ex}")
+        logger = logging.getLogger(__name__)
+        logger.error(f"Stripe webhook validation failed: {ex}")
+        raise HTTPException(400, f"Webhook signature validation failed: {ex}")
 
     # Idempotent activation on payment_intent.succeeded / checkout.session.completed
     if event.payment_status == "paid" and event.session_id:

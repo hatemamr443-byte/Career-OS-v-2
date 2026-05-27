@@ -7,8 +7,23 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
-_mongo_url = os.environ.get("MONGO_URL") or "mongodb://localhost:27017"
-_db_name   = os.environ.get("DB_NAME") or "career_os"
+# CRITICAL: Fail-fast if MongoDB connection not configured
+_mongo_url = os.environ.get("MONGO_URL")
+_db_name   = os.environ.get("DB_NAME")
+
+if not _mongo_url:
+    raise RuntimeError(
+        "❌ FATAL: MONGO_URL environment variable not set.\n"
+        "Career OS requires explicit MongoDB connection configuration.\n"
+        "Set MONGO_URL to your MongoDB Atlas connection string or local MongoDB URI."
+    )
+
+if not _db_name:
+    raise RuntimeError(
+        "❌ FATAL: DB_NAME environment variable not set.\n"
+        "Set DB_NAME to your database name (e.g., 'career_os')."
+    )
+
 _client = AsyncIOMotorClient(_mongo_url)
 db = _client[_db_name]
 
