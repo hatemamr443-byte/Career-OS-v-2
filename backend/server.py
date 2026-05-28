@@ -43,34 +43,20 @@ from seed import seed_jobs_if_empty, seed_user_emails, seed_user_profile
 # ── Environment Validation (fail-fast on startup) ───────────────────
 def _validate_environment() -> None:
     """Verify critical environment variables are set. Fails hard if not."""
-    required = ["MONGO_URL", "DB_NAME"]
-    optional_but_recommended = [
-        "EMERGENT_LLM_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY"
-    ]
-    
+    # Settings object already does validation in config.py
+    # This function is now just for informational logging
     logger = logging.getLogger(__name__)
-    missing = [var for var in required if not os.environ.get(var)]
-    
-    if missing:
-        error_msg = f"❌ STARTUP FAILED: Missing required env vars: {', '.join(missing)}"
-        logger.critical(error_msg)
-        raise RuntimeError(error_msg)
-    
-    missing_optional = [var for var in optional_but_recommended if not os.environ.get(var)]
-    if missing_optional:
-        logger.warning(
-            "⚠️  Missing optional LLM keys: %s — AI features will be degraded",
-            ", ".join(missing_optional),
-        )
-    
     logger.info(
-        "✅ Environment validation passed",
+        "✅ Environment validation passed (via config.settings)",
         extra={
-            "mongo_url_set": bool(os.environ.get("MONGO_URL")),
-            "db_name": os.environ.get("DB_NAME"),
-            "environment": os.environ.get("ENVIRONMENT", "development"),
-            "llm_providers_available": len([
-                v for v in optional_but_recommended if os.environ.get(v)
+            "mongo_url_set": bool(_cfg.MONGO_URL),
+            "db_name": _cfg.DB_NAME,
+            "environment": _cfg.ENVIRONMENT,
+            "llm_providers_available": sum([
+                bool(_cfg.EMERGENT_LLM_KEY),
+                bool(_cfg.ANTHROPIC_API_KEY),
+                bool(_cfg.OPENAI_API_KEY),
+                bool(_cfg.GEMINI_API_KEY),
             ]),
         },
     )
@@ -84,7 +70,7 @@ from config import settings as _cfg  # noqa: E402
 _validate_environment()
 
 # ── Sentry Error Monitoring ──────────────────────────────────────
-_sentry_dsn = os.environ.get("SENTRY_DSN", "")
+_sentry_dsn = _cfg.SENTRY_DSN
 if _sentry_dsn:
     try:
         import sentry_sdk
@@ -96,8 +82,8 @@ if _sentry_dsn:
             integrations=[StarletteIntegration(), FastApiIntegration()],
             traces_sample_rate=0.1,
             profiles_sample_rate=0.1,
-            environment=os.environ.get("ENVIRONMENT", "production"),
-            release=os.environ.get("RENDER_GIT_COMMIT", "unknown"),
+            environment=_cfg.ENVIRONMENT,
+            release=_cfg.RENDER_GIT_COMMIT or "unknown",
         )
         logging.getLogger(__name__).info("Sentry initialized ✓")
     except ImportError:
@@ -294,7 +280,7 @@ async def on_shutdown():
 async def cron_welcome_emails(request: Request):
     """Daily cron — sends day1/day3/day7 drip emails. Secured by CRON_TOKEN."""
     token = request.headers.get("x-cron-token", "")
-    if token != os.environ.get("CRON_TOKEN", ""):
+    if token != _cfg.CRON_TOKEN:
         from fastapi import HTTPException
 
         raise HTTPException(401, "Unauthorized")
@@ -306,7 +292,7 @@ async def cron_welcome_emails(request: Request):
 @app.post("/api/internal/run-daily-digest")
 async def run_daily_digest_endpoint(request: Request):
     """Cron — triggers daily job-match digest."""
-    if request.headers.get("x-cron-token","") != os.environ.get("CRON_TOKEN",""):
+    if request.headers.get("x-cron-token","") != _cfg.CRON_TOKEN:
         from fastapi import HTTPException
         raise HTTPException(401, "Unauthorized")
     from fastapi.background import BackgroundTasks
@@ -319,7 +305,7 @@ async def run_daily_digest_endpoint(request: Request):
 @app.post("/api/internal/consolidate-memory")
 async def consolidate_memory_endpoint(request: Request):
     """Daily cron — consolidates career events into AI notes."""
-    if request.headers.get("x-cron-token","") != os.environ.get("CRON_TOKEN",""):
+    if request.headers.get("x-cron-token","") != _cfg.CRON_TOKEN:
         from fastapi import HTTPException
         raise HTTPException(401, "Unauthorized")
     from fastapi.background import BackgroundTasks

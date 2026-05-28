@@ -12,6 +12,7 @@ from emergentintegrations.payments.stripe.checkout import (
 from db import users, db as mongo_db
 from auth import get_current_user
 from models import new_id, CheckoutRequest, ReferralApplyRequest
+from config import settings
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 
@@ -29,7 +30,7 @@ referrals            = mongo_db.referrals
 
 
 def _stripe(http_request: Request) -> StripeCheckout:
-    api_key = os.environ.get("STRIPE_SECRET_KEY", "")
+    api_key = settings.STRIPE_SECRET_KEY or ""
     host_url = str(http_request.base_url).rstrip("/")
     webhook_url = f"{host_url}/api/webhook/stripe"
     return StripeCheckout(api_key=api_key, webhook_url=webhook_url)
@@ -238,7 +239,7 @@ async def _reward_referrer(referred_user_id: str) -> None:
 
 
 def _referral_url(code: str) -> str:
-    dashboard = os.environ.get("DASHBOARD_URL", "https://career-os-web.onrender.com")
+    dashboard = "https://career-os-web.onrender.com"  # Hardcoded (no env var override needed)
     return f"{dashboard}?ref={code}"
 
 
@@ -399,8 +400,8 @@ async def stripe_webhook(request: Request):
     Fails hard if Stripe keys are not configured.
     """
     # CRITICAL: Validate Stripe keys are configured
-    stripe_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
-    stripe_key = os.environ.get("STRIPE_SECRET_KEY")
+    stripe_secret = settings.STRIPE_WEBHOOK_SECRET
+    stripe_key = settings.STRIPE_SECRET_KEY
     
     if not stripe_secret or not stripe_key:
         logger = logging.getLogger(__name__)

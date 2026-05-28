@@ -13,18 +13,19 @@ Endpoints:
   GET  /admin/system             — Overall system health snapshot
 """
 from __future__ import annotations
-import os
 import logging
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Header
 from db import db as mongo_db, career_events
 from event_bus import event_bus
+from config import settings
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
-_ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", os.environ.get("CRON_TOKEN", ""))
+# Admin token: use ADMIN_TOKEN if set, fall back to CRON_TOKEN for backward compatibility
+_ADMIN_TOKEN = settings.ADMIN_TOKEN or settings.CRON_TOKEN
 
 
 def _require_admin(x_admin_token: str = Header(default="")):
@@ -236,6 +237,6 @@ async def system_snapshot(x_admin_token: str = Header(default="")):
         "working_memory": __import__("working_memory").working_memory.stats(),
         "langfuse": __import__("langfuse_tracer").tracer.status(),
         "firecrawl": __import__("firecrawl_adapter").firecrawl.status(),
-        "environment": os.environ.get("ENVIRONMENT", "development"),
+        "environment": settings.ENVIRONMENT,
         "version": "2.1.0",
     }
