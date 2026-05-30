@@ -1,6 +1,5 @@
 """Stripe billing: Pro / Team monthly plans (one-time charge, 30 days access)."""
 import logging
-import os
 import stripe as stripe_sdk
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request

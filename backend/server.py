@@ -1,7 +1,6 @@
 """Main FastAPI server for AI Career OS."""
 # ruff: noqa: E402  — load_dotenv() must run before local module imports
 import logging
-import os
 from pathlib import Path
 import uuid as _uuid
 
