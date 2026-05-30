@@ -194,8 +194,9 @@ async def seed_for_user(user=Depends(get_current_user)):
 
 @app.on_event("startup")
 async def on_startup():
-    """TEMPORARILY DISABLED for debugging."""
-    print("✅ Startup hook disabled temporarily")
+    """Startup hook - minimal."""
+    import logging
+    logging.getLogger(__name__).info("✅ Application started")
 
 
 @app.on_event("shutdown")
