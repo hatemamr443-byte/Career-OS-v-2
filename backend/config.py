@@ -138,6 +138,7 @@ class Settings(BaseSettings):
         env_file = _BACKEND_DIR / ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
+        extra = "ignore"  # Allow extra fields in .env without validation error
 
     def validate_required(self) -> None:
         """Fail-fast validation for required variables. Called at startup."""

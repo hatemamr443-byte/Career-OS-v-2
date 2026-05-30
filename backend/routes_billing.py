@@ -4,10 +4,27 @@ import os
 import stripe as stripe_sdk
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request
-from emergentintegrations.payments.stripe.checkout import (
-    StripeCheckout,
-    CheckoutSessionRequest,
-)
+# TEMPORARILY DISABLED: emergentintegrations package unavailable
+# from emergentintegrations.payments.stripe.checkout import (
+#     StripeCheckout,
+#     CheckoutSessionRequest,
+# )
+# Using direct Stripe SDK instead
+
+# Mock StripeCheckout class (replacement for emergentintegrations)
+class StripeCheckout:
+    """Mock Stripe checkout handler using direct Stripe SDK."""
+    def __init__(self, api_key: str, webhook_url: str):
+        self.api_key = api_key
+        self.webhook_url = webhook_url
+        import stripe as stripe_sdk
+        stripe_sdk.api_key = api_key
+
+class CheckoutSessionRequest:
+    """Mock checkout request model."""
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 from db import users, db as mongo_db
 from auth import get_current_user

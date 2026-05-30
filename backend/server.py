@@ -194,74 +194,8 @@ async def seed_for_user(user=Depends(get_current_user)):
 
 @app.on_event("startup")
 async def on_startup():
-    _startup_logger = logging.getLogger(__name__)
-    # Startup config validation
-    warnings = _cfg.validate_startup()
-    for w in warnings:
-        _startup_logger.warning("STARTUP CONFIG: %s", w)
-    if warnings:
-        _startup_logger.warning("Fix the above before going to production.")
-
-    import asyncio
-    # Run indexes in background — don't block /health endpoint
-    async def _bg_init():
-        from db import init_indexes
-        try:
-            await init_indexes()
-        except Exception as ex:
-            logging.getLogger(__name__).warning('Index init failed: %s', ex)
-    asyncio.create_task(_bg_init())
-    await seed_jobs_if_empty()
-    # Ensure dedupe race-safety on jobs.content_hash (partial index — only docs that have the field)
-    try:
-        from db import db as mongo_db, jobs as jobs_col
-
-        await jobs_col.create_index(
-            "content_hash",
-            unique=True,
-            partialFilterExpression={"content_hash": {"$exists": True}},
-            name="content_hash_unique",
-        )
-        await mongo_db.match_usage.create_index([("user_id", 1), ("month", 1)], unique=True, name="usage_uq")
-        await mongo_db.payment_transactions.create_index("session_id", unique=True, name="session_uq")
-        # P1 indexes
-        await mongo_db.activity_logs.create_index([("user_id", 1), ("created_at", -1)], name="activity_user_time")
-        await mongo_db.notifications.create_index([("user_id", 1), ("read", 1), ("created_at", -1)], name="notif_user_unread")
-        await mongo_db.xp_events.create_index([("user_id", 1), ("created_at", -1)], name="xp_user_time")
-        await mongo_db.bookmarks.create_index([("user_id", 1), ("job_id", 1)], unique=True, name="bookmark_uq")
-        await mongo_db.cv_versions.create_index([("user_id", 1), ("created_at", -1)], name="cv_ver_user_time")
-        await mongo_db.interview_sessions.create_index([("user_id", 1), ("created_at", -1)], name="iv_session_user_time")
-        await mongo_db.ai_usage.create_index([("user_id", 1), ("feature", 1), ("date", 1)], unique=True, name="ai_usage_uq")
-        await mongo_db.referrals.create_index("code", unique=True, name="referral_code_uq")
-        await mongo_db.emails_sent.create_index([("user_id", 1), ("sequence_key", 1)], unique=True, name="emails_sent_uq")
-        # Career Intelligence indexes
-        await mongo_db.career_graph.create_index("user_id", unique=True, name="career_graph_user_uq")
-        await mongo_db.career_events.create_index([("user_id", 1), ("created_at", -1)], name="career_events_user_time")
-        await mongo_db.career_events.create_index(
-            [("user_id", 1), ("event_type", 1), ("created_at", -1)],
-            name="career_events_user_type_time",
-        )
-        # Orchestration / observability indexes
-        await mongo_db.ai_telemetry.create_index([("user_id", 1), ("created_at", -1)], name="ai_telemetry_user_time")
-        await mongo_db.ai_telemetry.create_index([("feature", 1), ("created_at", -1)], name="ai_telemetry_feature_time")
-        await mongo_db.events_outbox.create_index([("delivered", 1), ("created_at", 1)], name="outbox_delivery")
-        # P1 workflow handoff stores
-        await mongo_db.workflow_hints.create_index([("user_id", 1), ("kind", 1)], unique=True, name="wf_hints_uq")
-        await mongo_db.interview_prep_context.create_index([("user_id", 1), ("from_addr", 1)], unique=True, name="ipc_uq")
-        await mongo_db.cv_tailor_hints.create_index([("user_id", 1), ("job_id", 1)], unique=True, name="cv_hints_uq")
-        await mongo_db.salary_comparison.create_index([("user_id", 1), ("company", 1)], unique=True, name="salary_cmp_uq")
-        await mongo_db.insight_dismissals.create_index([("user_id", 1), ("insight_id", 1)], unique=True, name="insight_dismiss_uq")
-        await mongo_db.salary_cache.create_index([("user_id", 1), ("role", 1), ("location", 1)], name="salary_cache_uq")
-    except Exception as ex:
-        logging.warning("Index creation skipped: %s", ex)
-
-    # Wire orchestrator subscribers (idempotent)
-    try:
-        from orchestrator import wire_subscribers
-
-        wire_subscribers()
-    except Exception as ex:
-        logging.warning("Subscriber wiring failed: %s", ex)
+    """TEMPORARILY DISABLED for debugging."""
+    print("✅ Startup hook disabled temporarily")
 
 
 @app.on_event("shutdown")
