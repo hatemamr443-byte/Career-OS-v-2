@@ -204,7 +204,7 @@ async def on_shutdown():
     """Graceful shutdown — close MongoDB connection."""
     try:
         from db import db as mongo_db
-        await mongo_db.client.close()
+        mongo_db.client.close()  # close() returns None, not a coroutine
         logging.getLogger(__name__).info("MongoDB connection closed ✓")
     except Exception as ex:
         logging.getLogger(__name__).warning("Shutdown error: %s", ex)

@@ -212,11 +212,18 @@ def parse_json_loose(text: str) -> dict:
 
 
 async def llm_health_check() -> dict:
+    import asyncio
     results = {}
     try:
-        resp = await llm_call(task="fast", system="Reply OK", user="ping",
-                              session_id="health_check")
+        # Timeout protection — readiness check must be fast (2 sec max)
+        resp = await asyncio.wait_for(
+            llm_call(task="fast", system="Reply OK", user="ping",
+                     session_id="health_check"),
+            timeout=2.0
+        )
         results["emergent"] = "ok" if resp else "empty"
+    except asyncio.TimeoutError:
+        results["emergent"] = "timeout"
     except Exception as ex:
         results["emergent"] = f"error:{str(ex)[:60]}"
     return {
