@@ -71,7 +71,7 @@ def _seed_test_jobs() -> None:
     mongo_url = os.environ["MONGO_URL"]
     db_name = os.environ["DB_NAME"]
     
-    # Mock jobs data (simplified)
+    # Mock jobs data with required fields for endpoint
     mock_jobs = [
         {
             "title": f"Software Engineer {i}",
@@ -79,6 +79,9 @@ def _seed_test_jobs() -> None:
             "location": "Remote",
             "job_id": f"job_{i:04d}",
             "source": "test",
+            "skills_required": ["Python", "REST APIs", "FastAPI"],
+            "description": f"Job description for Software Engineer position {i}",
+            "remote": True,
         }
         for i in range(10)
     ]
