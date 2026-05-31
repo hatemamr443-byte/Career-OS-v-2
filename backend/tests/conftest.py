@@ -66,5 +66,31 @@ def _seed_test_identity() -> None:
     )
 
 
+def _seed_test_jobs() -> None:
+    """Seed mock jobs for test_list_jobs to pass."""
+    mongo_url = os.environ["MONGO_URL"]
+    db_name = os.environ["DB_NAME"]
+    
+    # Mock jobs data (simplified)
+    mock_jobs = [
+        {
+            "title": f"Software Engineer {i}",
+            "company": f"Company {i}",
+            "location": "Remote",
+            "job_id": f"job_{i:04d}",
+            "source": "test",
+        }
+        for i in range(10)
+    ]
+    
+    client = MongoClient(mongo_url)
+    db = client[db_name]
+    
+    # Only seed if jobs collection is empty
+    if db.jobs.count_documents({}) == 0:
+        db.jobs.insert_many(mock_jobs)
+
+
 def pytest_sessionstart(session) -> None:  # noqa: ARG001
     _seed_test_identity()
+    _seed_test_jobs()
