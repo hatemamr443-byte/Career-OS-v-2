@@ -37,7 +37,7 @@ from routes_memory import router as memory_router
 from routes_extension import router as extension_router
 from routes_profile import router as profile_router
 from routes_salary import router as salary_router
-from seed import seed_jobs_if_empty, seed_user_emails, seed_user_profile
+from seed import seed_user_emails, seed_user_profile
 
 # ── Environment Validation (fail-fast on startup) ───────────────────
 def _validate_environment() -> None:

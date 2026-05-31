@@ -3,6 +3,11 @@ import logging
 import stripe as stripe_sdk
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request
+from db import users, db as mongo_db
+from auth import get_current_user
+from models import new_id, CheckoutRequest, ReferralApplyRequest
+from config import settings
+
 # TEMPORARILY DISABLED: emergentintegrations package unavailable
 # from emergentintegrations.payments.stripe.checkout import (
 #     StripeCheckout,
@@ -25,10 +30,6 @@ class CheckoutSessionRequest:
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-from db import users, db as mongo_db
-from auth import get_current_user
-from models import new_id, CheckoutRequest, ReferralApplyRequest
-from config import settings
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 

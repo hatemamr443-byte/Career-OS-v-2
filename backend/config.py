@@ -10,7 +10,6 @@ CRITICAL RULES:
 - All defaults are explicit and documented
 """
 
-import os
 from pathlib import Path
 from typing import Optional, List
 from pydantic import Field
