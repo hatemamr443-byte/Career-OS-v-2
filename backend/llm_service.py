@@ -11,7 +11,6 @@ Circuit breaker: per-provider sliding-window (10 calls, >50% errors → open for
 import asyncio
 import json
 import logging
-import os
 import re
 import time
 from collections import deque

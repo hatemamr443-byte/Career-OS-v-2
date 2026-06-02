@@ -43,6 +43,8 @@ missions = db.missions
 coach_messages = db.coach_messages
 decisions = db.decisions
 profiles = db.profiles  # CV / identity graph
+user_matches = db.user_matches  # Job match scores
+billing = db.billing  # Subscription & payment records
 # P1 collections
 activity_logs = db.activity_logs
 notifications = db.notifications

@@ -3,7 +3,6 @@
 Gracefully no-ops when RESEND_API_KEY is not set, so the rest of the system
 keeps working until the user pastes their key.
 """
-import os
 import asyncio
 import logging
 from typing import Optional
