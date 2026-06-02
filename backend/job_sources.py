@@ -113,8 +113,9 @@ def _normalize(raw: dict, source: str) -> dict:
 
 # ───────── Adzuna ─────────
 async def fetch_adzuna(country: str, query: str = "", limit: int = 25) -> List[Dict[str, Any]]:
-    app_id = os.environ.get("ADZUNA_APP_ID")
-    app_key = os.environ.get("ADZUNA_APP_KEY")
+    from config import settings
+    app_id = settings.ADZUNA_APP_ID
+    app_key = settings.ADZUNA_API_KEY
     if not app_id or not app_key:
         raise RuntimeError("Job service unavailable. Please configure Adzuna API.")
     url = ADZUNA_URL.format(country=country)
@@ -147,7 +148,8 @@ async def fetch_adzuna(country: str, query: str = "", limit: int = 25) -> List[D
 
 # ───────── Jooble ─────────
 async def fetch_jooble(query: str = "", location: str = "Lisbon", limit: int = 25) -> List[Dict[str, Any]]:
-    key = os.environ.get("JOOBLE_API_KEY")
+    from config import settings
+    key = settings.JOOBLE_API_KEY
     if not key:
         raise RuntimeError("Jooble API key missing.")
     url = JOOBLE_URL.format(key=key)

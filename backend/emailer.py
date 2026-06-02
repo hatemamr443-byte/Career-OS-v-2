@@ -14,14 +14,16 @@ log = logging.getLogger("emailer")
 
 
 def _configured() -> bool:
-    key = os.environ.get("RESEND_API_KEY", "").strip()
+    from config import settings
+    key = (settings.RESEND_API_KEY or "").strip()
     return bool(key)
 
 
 async def send_email(*, to: str, subject: str, html: str, text: Optional[str] = None) -> dict:
     """Returns {sent: bool, id?: str, reason?: str}. Never raises."""
-    key = os.environ.get("RESEND_API_KEY", "").strip()
-    sender = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
+    from config import settings
+    key = (settings.RESEND_API_KEY or "").strip()
+    sender = settings.EMAIL_FROM or "onboarding@resend.dev"
     if not key:
         log.warning("RESEND_API_KEY not configured — email to %s skipped.", to)
         return {"sent": False, "reason": "RESEND_API_KEY not configured"}

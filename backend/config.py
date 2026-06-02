@@ -64,6 +64,10 @@ class Settings(BaseSettings):
         default="Career OS <noreply@career-os.io>",
         description="From address for all emails",
     )
+    SENDER_EMAIL: Optional[str] = Field(
+        default="onboarding@resend.dev",
+        description="Sender email address (for backward compatibility)",
+    )
 
     # ── OPTIONAL: Payments (Stripe) ─────────────────────────────
     STRIPE_SECRET_KEY: Optional[str] = Field(

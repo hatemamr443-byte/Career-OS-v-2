@@ -65,6 +65,8 @@ configure_logging()
 
 from config import settings as _cfg  # noqa: E402
 from error_handler import install_error_handler
+from rate_limiting import install_rate_limiting
+from input_validation import install_input_validation
 
 # Validate environment on module load
 _validate_environment()
@@ -284,6 +286,12 @@ app.add_middleware(_RequestIDMiddleware)
 
 # Install global error handler
 install_error_handler(app)
+
+# Install rate limiting (prevent DoS)
+install_rate_limiting(app)
+
+# Install input validation (prevent injection attacks)
+install_input_validation(app)
 
 # Parse CORS origins from comma-separated string
 _cors_origins = [o.strip() for o in _cfg.CORS_ORIGINS.split(",") if o.strip()]

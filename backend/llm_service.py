@@ -78,7 +78,8 @@ _cb = _CircuitBreaker()
 
 async def _call_emergent(task, system, user, session_id):
     from emergentintegrations.llm.chat import LlmChat, UserMessage
-    key = os.environ.get("EMERGENT_LLM_KEY", "")
+    from config import settings
+    key = settings.EMERGENT_LLM_KEY or ""
     if not key:
         raise ValueError("EMERGENT_LLM_KEY not set")
     provider, model = ROUTING[task]["emergent"]
@@ -90,8 +91,9 @@ async def _call_emergent(task, system, user, session_id):
 
 async def _call_anthropic(system, user):
     import anthropic
+    from config import settings
 
-    key = os.environ.get("ANTHROPIC_API_KEY", "")
+    key = settings.ANTHROPIC_API_KEY or ""
     if not key:
         raise ValueError("ANTHROPIC_API_KEY not set")
     client = anthropic.AsyncAnthropic(api_key=key)
@@ -106,8 +108,9 @@ async def _call_anthropic(system, user):
 
 async def _call_openai(system, user):
     from openai import AsyncOpenAI
+    from config import settings
 
-    key = os.environ.get("OPENAI_API_KEY", "")
+    key = settings.OPENAI_API_KEY or ""
     if not key:
         raise ValueError("OPENAI_API_KEY not set")
     client = AsyncOpenAI(api_key=key)
@@ -124,8 +127,9 @@ async def _call_openai(system, user):
 
 async def _call_gemini(system, user):
     import google.generativeai as genai
+    from config import settings
 
-    key = os.environ.get("GEMINI_API_KEY", "")
+    key = settings.GEMINI_API_KEY or ""
     if not key:
         raise ValueError("GEMINI_API_KEY not set")
     genai.configure(api_key=key)
