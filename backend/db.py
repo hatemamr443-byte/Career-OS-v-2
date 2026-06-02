@@ -24,10 +24,10 @@ if not settings.DB_NAME:
 # Create client with connection pooling
 _client = AsyncIOMotorClient(
     settings.MONGO_URL,
-    maxPoolSize=50,  # Maximum 50 connections
-    minPoolSize=10,  # Minimum 10 connections
-    serverSelectionTimeoutMS=5000,
-    connectTimeoutMS=10000,
+    maxPoolSize=50,
+    minPoolSize=2,
+    serverSelectionTimeoutMS=3000,   # Reduced: 3s (was 5s)
+    connectTimeoutMS=5000,           # Reduced: 5s (was 10s)
     retryWrites=True,
 )
 
