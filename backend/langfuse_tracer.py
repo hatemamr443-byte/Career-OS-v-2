@@ -42,9 +42,10 @@ def _init_langfuse() -> bool:
     if _lf_client is not None:
         return _lf_enabled
 
-    pub  = os.environ.get("LANGFUSE_PUBLIC_KEY", "")
-    sec  = os.environ.get("LANGFUSE_SECRET_KEY", "")
-    host = os.environ.get("LANGFUSE_HOST", "https://cloud.langfuse.com")
+    from config import settings
+    pub  = settings.LANGFUSE_PUBLIC_KEY or ""
+    sec  = settings.LANGFUSE_SECRET_KEY or ""
+    host = "https://cloud.langfuse.com"
 
     if not pub or not sec:
         _lf_enabled = False

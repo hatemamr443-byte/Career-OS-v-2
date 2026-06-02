@@ -78,6 +78,48 @@ class Settings(BaseSettings):
         default=None,
         description="Stripe Price ID for Basic plan",
     )
+
+    # ── OPTIONAL: External APIs ─────────────────────────────────
+    FIRECRAWL_API_KEY: Optional[str] = Field(
+        default=None,
+        description="FireCrawl API key for web scraping",
+    )
+    GOOGLE_CLIENT_ID: Optional[str] = Field(
+        default=None,
+        description="Google OAuth Client ID for Gmail integration",
+    )
+    GOOGLE_CLIENT_SECRET: Optional[str] = Field(
+        default=None,
+        description="Google OAuth Client Secret",
+    )
+    GOOGLE_REDIRECT_URI: Optional[str] = Field(
+        default=None,
+        description="Google OAuth redirect URI",
+    )
+    DASHBOARD_URL: str = Field(
+        default="http://localhost:3000",
+        description="Frontend dashboard URL for OAuth redirects",
+    )
+    LANGFUSE_PUBLIC_KEY: Optional[str] = Field(
+        default=None,
+        description="Langfuse public key for LLM tracing",
+    )
+    LANGFUSE_SECRET_KEY: Optional[str] = Field(
+        default=None,
+        description="Langfuse secret key",
+    )
+    ADZUNA_APP_ID: Optional[str] = Field(
+        default=None,
+        description="Adzuna job search API app ID",
+    )
+    ADZUNA_API_KEY: Optional[str] = Field(
+        default=None,
+        description="Adzuna job search API key",
+    )
+    JOOBLE_API_KEY: Optional[str] = Field(
+        default=None,
+        description="Jooble job search API key",
+    )
     STRIPE_PRICE_ID_PRO: Optional[str] = Field(
         default=None,
         description="Stripe Price ID for Pro plan",

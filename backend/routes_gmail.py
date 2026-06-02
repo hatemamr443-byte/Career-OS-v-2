@@ -26,9 +26,10 @@ SCOPES           = (
 
 
 def _creds() -> tuple[str, str, str]:
-    cid      = os.environ.get("GOOGLE_CLIENT_ID", "")
-    secret   = os.environ.get("GOOGLE_CLIENT_SECRET", "")
-    redirect = os.environ.get("GOOGLE_REDIRECT_URI", "")
+    from config import settings
+    cid      = settings.GOOGLE_CLIENT_ID or ""
+    secret   = settings.GOOGLE_CLIENT_SECRET or ""
+    redirect = settings.GOOGLE_REDIRECT_URI or ""
     if not all([cid, secret, redirect]):
         raise HTTPException(503, "Gmail OAuth is not configured on this deployment.")
     return cid, secret, redirect

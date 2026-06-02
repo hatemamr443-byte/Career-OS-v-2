@@ -43,7 +43,8 @@ class FirecrawlAdapter:
     def _init(self) -> bool:
         if self._init_done:
             return self._enabled
-        self._key     = os.environ.get("FIRECRAWL_API_KEY", "")
+        from config import settings
+        self._key     = settings.FIRECRAWL_API_KEY or ""
         self._enabled = bool(self._key)
         self._init_done = True
         if self._enabled:

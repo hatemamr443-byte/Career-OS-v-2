@@ -64,6 +64,7 @@ def _validate_environment() -> None:
 configure_logging()
 
 from config import settings as _cfg  # noqa: E402
+from error_handler import install_error_handler
 
 # Validate environment on module load
 _validate_environment()
@@ -193,9 +194,18 @@ async def seed_for_user(user=Depends(get_current_user)):
 
 @app.on_event("startup")
 async def on_startup():
-    """Startup hook - minimal."""
+    """Startup hook - initialize database and indexes."""
     import logging
-    logging.getLogger(__name__).info("✅ Application started")
+    logger = logging.getLogger(__name__)
+    
+    try:
+        from db import init_db
+        await init_db()
+        logger.info("✅ Database initialized with indexes")
+    except Exception as e:
+        logger.warning(f"⚠️ Database initialization warning: {e}")
+    
+    logger.info("✅ Application started")
 
 
 @app.on_event("shutdown")
@@ -272,10 +282,18 @@ class _RequestIDMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(_RequestIDMiddleware)
 
+# Install global error handler
+install_error_handler(app)
+
+# Parse CORS origins from comma-separated string
+_cors_origins = [o.strip() for o in _cfg.CORS_ORIGINS.split(",") if o.strip()]
+if not _cors_origins:
+    _cors_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=_cfg.CORS_ORIGINS,
-    allow_methods=["*"],
+    allow_origins=_cors_origins,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
     allow_headers=["*"],
 )

@@ -1,31 +1,37 @@
 """MongoDB connection and collection accessors."""
-import os
 from motor.motor_asyncio import AsyncIOMotorClient
-from dotenv import load_dotenv
 from pathlib import Path
 
+# Import config (handles environment variables centrally)
+from config import settings
+
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / ".env")
 
 # CRITICAL: Fail-fast if MongoDB connection not configured
-_mongo_url = os.environ.get("MONGO_URL")
-_db_name   = os.environ.get("DB_NAME")
-
-if not _mongo_url:
+if not settings.MONGO_URL:
     raise RuntimeError(
         "❌ FATAL: MONGO_URL environment variable not set.\n"
         "Career OS requires explicit MongoDB connection configuration.\n"
         "Set MONGO_URL to your MongoDB Atlas connection string or local MongoDB URI."
     )
 
-if not _db_name:
+if not settings.DB_NAME:
     raise RuntimeError(
         "❌ FATAL: DB_NAME environment variable not set.\n"
         "Set DB_NAME to your database name (e.g., 'career_os')."
     )
 
-_client = AsyncIOMotorClient(_mongo_url)
-db = _client[_db_name]
+# Create client with connection pooling
+_client = AsyncIOMotorClient(
+    settings.MONGO_URL,
+    maxPoolSize=50,  # Maximum 50 connections
+    minPoolSize=10,  # Minimum 10 connections
+    serverSelectionTimeoutMS=5000,
+    connectTimeoutMS=10000,
+    retryWrites=True,
+)
+
+db = _client[settings.DB_NAME]
 
 # Collections
 users = db.users
@@ -87,3 +93,57 @@ async def init_indexes() -> None:
         db.interview_sessions.create_index([("user_id", 1), ("created_at", -1)]),
         return_exceptions=True,
     )
+
+
+# ── Index Creation for Performance ──────────────────────────
+async def _ensure_indexes() -> None:
+    """Create indexes for frequently queried collections.
+    
+    Indexes significantly improve query performance on large datasets.
+    Called once at server startup.
+    """
+    try:
+        # Users collection indexes
+        await users.create_index("email", unique=True)
+        await users.create_index("user_id", unique=True)
+        await users.create_index("created_at")
+        
+        # Profiles collection indexes
+        await profiles.create_index("user_id", unique=True)
+        await profiles.create_index("skills")  # For skill-based queries
+        
+        # Jobs collection indexes
+        await jobs.create_index("job_id", unique=True)
+        await jobs.create_index("title")
+        await jobs.create_index("company")
+        await jobs.create_index("location")
+        await jobs.create_index("skills_required")
+        await jobs.create_index("source")
+        await jobs.create_index("posted_date", expireAfterSeconds=86400*30)  # Auto-delete after 30 days
+        
+        # Applications collection indexes
+        await applications.create_index([("user_id", 1), ("job_id", 1)], unique=True)
+        await applications.create_index("user_id")
+        await applications.create_index("job_id")
+        await applications.create_index("status")
+        await applications.create_index("applied_at")
+        
+        # User matches indexes
+        await user_matches.create_index([("user_id", 1), ("job_id", 1)], unique=True)
+        await user_matches.create_index("user_id")
+        await user_matches.create_index("full_score", direction=-1)  # For sorting
+        
+        # Billing collection indexes
+        await billing.create_index("user_id", unique=True)
+        await billing.create_index("stripe_subscription_id")
+        await billing.create_index("status")
+        
+        print("✅ Database indexes created successfully")
+    except Exception as e:
+        print(f"⚠️ Warning: Could not create indexes: {e}")
+
+
+# Call this function in server startup
+async def init_db() -> None:
+    """Initialize database connections and indexes."""
+    await _ensure_indexes()

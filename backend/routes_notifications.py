@@ -41,7 +41,8 @@ async def cron_run_daily_digest(
     """Cron endpoint — hit this from cron-job.org daily.
     Requires X-Cron-Token header matching CRON_TOKEN env var (set this in production).
     """
-    expected = os.environ.get("CRON_TOKEN", "")
+    from config import settings
+    expected = settings.CRON_TOKEN or ""
     if not expected:
         raise HTTPException(503, "CRON_TOKEN not configured on the server.")
     if x_cron_token != expected:
