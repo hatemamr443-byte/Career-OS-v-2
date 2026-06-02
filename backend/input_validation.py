@@ -36,7 +36,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
                     status_code=status.HTTP_400_BAD_REQUEST,
                     content={
                         "error": "Invalid input",
-                        "detail": f"Query parameter contains invalid pattern",
+                        "detail": "Query parameter contains invalid pattern",
                         "status": 400,
                     },
                 )
