@@ -29,7 +29,7 @@ def _seed_test_identity() -> None:
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(days=7)
 
-    client = MongoClient(mongo_url)
+    client = MongoClient(mongo_url, serverSelectionTimeoutMS=10000)
     db = client[db_name]
 
     db.users.update_one(
@@ -86,7 +86,7 @@ def _seed_test_jobs() -> None:
         for i in range(10)
     ]
     
-    client = MongoClient(mongo_url)
+    client = MongoClient(mongo_url, serverSelectionTimeoutMS=10000)
     db = client[db_name]
     
     # Only seed if jobs collection is empty
