@@ -64,9 +64,6 @@ def _validate_environment() -> None:
 configure_logging()
 
 from config import settings as _cfg  # noqa: E402
-from error_handler import install_error_handler
-from rate_limiting import install_rate_limiting
-from input_validation import install_input_validation
 
 # Validate environment on module load
 _validate_environment()
@@ -284,14 +281,25 @@ class _RequestIDMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(_RequestIDMiddleware)
 
-# Install global error handler
-install_error_handler(app)
+# ── Global exception handler (FastAPI built-in, not BaseHTTPMiddleware) ──
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 
-# Install rate limiting (prevent DoS)
-install_rate_limiting(app)
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    import logging
+    logging.getLogger(__name__).error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"error": "Internal Server Error", "detail": str(exc), "status": 500},
+    )
 
-# Install input validation (prevent injection attacks)
-install_input_validation(app)
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=422,
+        content={"error": "Validation Error", "detail": str(exc), "status": 422},
+    )
 
 # Parse CORS origins from comma-separated string
 _cors_origins = [o.strip() for o in _cfg.CORS_ORIGINS.split(",") if o.strip()]
