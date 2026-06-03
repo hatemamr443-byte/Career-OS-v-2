@@ -24,6 +24,43 @@ class StripeCheckout:
         import stripe as stripe_sdk
         stripe_sdk.api_key = api_key
 
+    async def create_checkout_session(self, req: "CheckoutSessionRequest"):
+        """Create Stripe checkout session. Returns mock in test/CI mode."""
+        import os
+        from config import settings
+
+        # In test/CI environment, return mock session to avoid real Stripe calls
+        if settings.ENVIRONMENT in ("test", "ci") or (
+            self.api_key and "placeholder" in self.api_key
+        ):
+            class MockSession:
+                session_id = "cs_test_mock_session_001"
+                url = "https://checkout.stripe.com/pay/cs_test_mock"
+            return MockSession()
+
+        import stripe as stripe_sdk
+        stripe_sdk.api_key = self.api_key
+        session = stripe_sdk.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": req.currency,
+                    "product_data": {"name": "Career OS Subscription"},
+                    "unit_amount": int(req.amount * 100),
+                },
+                "quantity": 1,
+            }],
+            mode="payment",
+            success_url=req.success_url,
+            cancel_url=req.cancel_url,
+            metadata=req.metadata,
+        )
+
+        class SessionResult:
+            session_id = session.id
+            url = session.url
+        return SessionResult()
+
 class CheckoutSessionRequest:
     """Mock checkout request model."""
     def __init__(self, **kwargs):

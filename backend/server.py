@@ -297,8 +297,8 @@ async def global_exception_handler(request, exc):
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
     return JSONResponse(
-        status_code=422,
-        content={"error": "Validation Error", "detail": str(exc), "status": 422},
+        status_code=400,
+        content={"error": "Bad Request", "detail": str(exc), "status": 400},
     )
 
 # Parse CORS origins from comma-separated string
