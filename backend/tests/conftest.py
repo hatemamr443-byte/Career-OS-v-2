@@ -98,6 +98,32 @@ def _seed_test_jobs() -> None:
         db.jobs.insert_many(mock_jobs)
 
 
+def _seed_test_emails() -> None:
+    """Seed mock email for test_emails_list to pass."""
+    mongo_url = os.environ["MONGO_URL"]
+    db_name = os.environ["DB_NAME"]
+    now = datetime.now(timezone.utc).isoformat()
+
+    client = MongoClient(mongo_url, serverSelectionTimeoutMS=10000)
+    db = client[db_name]
+
+    if db.emails.count_documents({"user_id": "user_testseed01"}) == 0:
+        db.emails.insert_one({
+            "email_id": "email_test_001",
+            "user_id": "user_testseed01",
+            "thread_id": "thread_test_001",
+            "subject": "Interview invitation - Software Engineer",
+            "from_name": "HR Team",
+            "from_email": "hr@company.com",
+            "body": "We would like to invite you for an interview.",
+            "classification": "interview",
+            "received_at": now,
+            "is_read": False,
+            "linked_job_id": None,
+        })
+
+
 def pytest_sessionstart(session) -> None:  # noqa: ARG001
     _seed_test_identity()
     _seed_test_jobs()
+    _seed_test_emails()
