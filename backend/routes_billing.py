@@ -26,7 +26,6 @@ class StripeCheckout:
 
     async def create_checkout_session(self, req: "CheckoutSessionRequest"):
         """Create Stripe checkout session. Returns mock in test/CI mode."""
-        import os
         from config import settings
 
         # In test/CI environment, return mock session to avoid real Stripe calls
