@@ -131,7 +131,7 @@ async def compute_match(job_id: str, user=Depends(get_current_user)):
         '"expected_outcome": "realistic outcome if applied"}'
     )
     user_prompt = (
-        f"JOB: {job['title']} at {job['company']} ({job['seniority']}, {job['location']})\n"
+        f"JOB: {job['title']} at {job['company']} ({job.get('seniority', 'mid')}, {job['location']})\n"
         f"Required skills: {', '.join(job.get('skills_required', []))}\n"
         f"Description:\n{job.get('description', '')[:2000]}"
     )

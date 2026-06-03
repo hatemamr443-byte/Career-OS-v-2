@@ -82,6 +82,10 @@ def _seed_test_jobs() -> None:
             "skills_required": ["Python", "REST APIs", "FastAPI"],
             "description": f"Job description for Software Engineer position {i}",
             "remote": True,
+            "seniority": "mid",
+            "salary_min": 3000,
+            "salary_max": 5000,
+            "employment_type": "full-time",
         }
         for i in range(10)
     ]
