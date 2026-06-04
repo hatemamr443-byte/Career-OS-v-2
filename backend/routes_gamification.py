@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from datetime import datetime, timezone, timedelta
 from db import users, missions, applications, profiles, coach_messages
-from models import new_id
+from models import new_id, CoachChatRequest
 from auth import get_current_user
 from llm_service import parse_json_loose
 from orchestrator import orchestrator
@@ -193,7 +193,7 @@ async def coach_history(user=Depends(get_current_user)):
 
 
 @router.post("/coach/chat")
-async def coach_chat(payload: dict, user=Depends(get_current_user)):
+async def coach_chat(payload: CoachChatRequest, user=Depends(get_current_user)):
     content = (payload.get("message") or "").strip()
     if not content:
         raise HTTPException(400, "message required")

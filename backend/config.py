@@ -30,7 +30,11 @@ class Settings(BaseSettings):
     # ── REQUIRED: CORS ────────────────────────────────────────
     CORS_ORIGINS: str = Field(
         default="*",
-        description="Comma-separated CORS allowed origins (use exact URL in prod)",
+        description=(
+            "Comma-separated CORS allowed origins. "
+            "Use '*' for dev only. "
+            "In production set to exact frontend URL e.g. https://myapp.com"
+        ),
     )
 
     # ── REQUIRED: Security ───────────────────────────────────────

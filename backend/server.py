@@ -1,18 +1,25 @@
 """Main FastAPI server for AI Career OS."""
 # ruff: noqa: E402  — load_dotenv() must run before local module imports
+
+# ── STEP 1: stdlib only (no env vars needed) ───────────────────────
 import logging
 from pathlib import Path
 import uuid as _uuid
 
-# ── CRITICAL: Load .env BEFORE any module imports ──────────────────
+# ── STEP 2: Load .env BEFORE any project module imports ────────────
 from dotenv import load_dotenv
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
-# ── Now safe to import modules that depend on env vars ─────────────
+# ── STEP 3: Configure logging (reads LOG_LEVEL from env) ───────────
 from logging_config import configure_logging
+configure_logging()
+
+# ── STEP 4: Now safe to import all project modules ─────────────────
 from fastapi import Depends, FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -59,9 +66,6 @@ def _validate_environment() -> None:
             ]),
         },
     )
-
-# Configure logging AFTER env is loaded
-configure_logging()
 
 from config import settings as _cfg  # noqa: E402
 
@@ -269,8 +273,6 @@ class _RequestIDMiddleware(BaseHTTPMiddleware):
 app.add_middleware(_RequestIDMiddleware)
 
 # ── Global exception handler (FastAPI built-in, not BaseHTTPMiddleware) ──
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):

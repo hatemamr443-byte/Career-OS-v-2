@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from datetime import datetime, timezone
 from db import jobs as jobs_col, applications
-from models import new_id
+from models import new_id, ExtensionJobRequest
 from auth import get_current_user
 from job_sources import _content_hash, _extract_skills, _guess_seniority
 from activity import log_activity
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/extension", tags=["extension"])
 
 
 @router.post("/save-job")
-async def extension_save_job(payload: dict, user=Depends(get_current_user)):
+async def extension_save_job(payload: ExtensionJobRequest, user=Depends(get_current_user)):
     """
     Save a job from the Chrome Extension.
     Deduplicates, inserts to jobs collection, optionally creates application.

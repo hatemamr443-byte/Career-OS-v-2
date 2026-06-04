@@ -135,3 +135,50 @@ class CheckoutRequest(BaseModel):
 class ReferralApplyRequest(BaseModel):
     """Request to apply a referral code."""
     code: str  # Referral code to apply
+
+
+# ── Input Validation Models (replacing raw dict parameters) ──────
+
+class CVScoreRequest(BaseModel):
+    """Request to score a CV against a job description."""
+    cv_text: str = Field(..., min_length=10, description="CV/resume text")
+    job_description: str = Field(default="", description="Job description to score against")
+
+
+class CoverLetterRequest(BaseModel):
+    """Request to generate a cover letter."""
+    cv_text: str = Field(..., min_length=10, description="CV/resume text")
+    job_description: str = Field(..., min_length=10, description="Target job description")
+    tone: str = Field(default="professional", description="Letter tone: professional/friendly/concise")
+
+
+class ExtensionJobRequest(BaseModel):
+    """Request from browser extension to save a job."""
+    title: str = Field(..., min_length=1, description="Job title")
+    company: str = Field(default="", description="Company name")
+    url: str = Field(default="", description="Job listing URL")
+    description: str = Field(default="", description="Job description")
+    location: str = Field(default="", description="Job location")
+    salary: str = Field(default="", description="Salary info")
+
+
+class CoachChatRequest(BaseModel):
+    """Request to send a message to the career coach."""
+    message: str = Field(..., min_length=1, max_length=2000, description="User message")
+    context: str = Field(default="", description="Additional context")
+
+
+class CareerROIRequest(BaseModel):
+    """Request for career ROI analysis."""
+    job_title: str = Field(..., min_length=1, description="Target job title")
+    company: str = Field(default="", description="Target company")
+    salary: float = Field(default=0, ge=0, description="Expected salary")
+    current_salary: float = Field(default=0, ge=0, description="Current salary")
+
+
+class NotificationUpdateRequest(BaseModel):
+    """Request to update notification preferences."""
+    email_notifications: bool = Field(default=True)
+    push_notifications: bool = Field(default=True)
+    job_alerts: bool = Field(default=True)
+    weekly_digest: bool = Field(default=True)

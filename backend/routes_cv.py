@@ -4,7 +4,7 @@ All AI calls route through orchestrator.run() for unified persona + memory + tel
 from fastapi import APIRouter, Depends, HTTPException
 from datetime import datetime, timezone
 from db import profiles, jobs, cv_versions
-from models import new_id
+from models import new_id, CVScoreRequest, CoverLetterRequest
 from auth import get_current_user
 from llm_service import parse_json_loose
 from orchestrator import orchestrator
@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/cv", tags=["cv"])
 # ─────────────────────────────────────────────
 
 @router.post("/ats-score")
-async def ats_score(payload: dict, user=Depends(get_current_user)):
+async def ats_score(payload: CVScoreRequest, user=Depends(get_current_user)):
     """Score CV against a job description for ATS compatibility."""
     cv_text  = payload.get("cv_text", "")
     job_text = payload.get("job_description", "")
@@ -168,7 +168,7 @@ async def tailor_cv(payload: dict, user=Depends(get_current_user)):
 # ─────────────────────────────────────────────
 
 @router.post("/cover-letter")
-async def generate_cover_letter(payload: dict, user=Depends(get_current_user)):
+async def generate_cover_letter(payload: CoverLetterRequest, user=Depends(get_current_user)):
     """Generate a tailored cover letter for a specific job."""
     job_id   = payload.get("job_id")
     tone     = payload.get("tone", "professional")
