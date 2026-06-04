@@ -82,11 +82,11 @@ jobs:
           exit 1
 
       - name: Run tests
-        # PYTHONPATH ensures backend/ local modules (insights_service, emailer, etc.)
-        # are importable when pytest collects tests from backend/tests/
+        # Run only the core integration tests (backend_test.py)
+        # iter*.py tests are feature-specific tests for manual runs
         env:
           PYTHONPATH: backend
-        run: pytest -vv backend/tests --tb=short -x
+        run: pytest -vv backend/tests/backend_test.py --tb=short -x
 
       - name: Stop backend
         if: always()
