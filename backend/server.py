@@ -232,19 +232,6 @@ async def cron_welcome_emails(request: Request):
     return await run_drip_sequence()
 
 
-@app.post("/api/internal/run-daily-digest")
-async def run_daily_digest_endpoint(request: Request):
-    """Cron — triggers daily job-match digest."""
-    if request.headers.get("x-cron-token","") != _cfg.CRON_TOKEN:
-        from fastapi import HTTPException
-        raise HTTPException(401, "Unauthorized")
-    from fastapi.background import BackgroundTasks
-    from daily_digest import run_daily_digest
-    bg = BackgroundTasks()
-    bg.add_task(run_daily_digest)
-    return {"ok": True, "message": "Digest running in background"}
-
-
 @app.post("/api/internal/consolidate-memory")
 async def consolidate_memory_endpoint(request: Request):
     """Daily cron — consolidates career events into AI notes."""

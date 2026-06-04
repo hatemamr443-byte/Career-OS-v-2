@@ -8,7 +8,7 @@ For each user with daily_matches=True who hasn't been emailed in ≥20 hours:
   4. Send Resend email with html + text
   5. Update profile.last_email_sent
 """
-import os
+from config import settings
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any
@@ -19,7 +19,7 @@ from emailer import send_email, render_daily_digest
 
 log = logging.getLogger("daily_digest")
 
-DASHBOARD_URL_FALLBACK = os.environ.get("DASHBOARD_URL", "http://localhost:3000")
+DASHBOARD_URL_FALLBACK = settings.DASHBOARD_URL
 
 
 def _quick_score(cv_skills: list, job_skills: list) -> int:

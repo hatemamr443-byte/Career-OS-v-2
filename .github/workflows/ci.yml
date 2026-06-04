@@ -94,7 +94,7 @@ jobs:
 
   # ── Frontend ──────────────────────────────────────────────────
   frontend:
-    name: Frontend (Node 24 / npm)
+    name: Frontend (Node 20 / npm)
     runs-on: ubuntu-latest
 
     steps:

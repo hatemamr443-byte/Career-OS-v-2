@@ -112,6 +112,10 @@ class Settings(BaseSettings):
         default=None,
         description="Langfuse secret key",
     )
+    LANGFUSE_HOST: str = Field(
+        default="https://cloud.langfuse.com",
+        description="Langfuse API host",
+    )
     ADZUNA_APP_ID: Optional[str] = Field(
         default=None,
         description="Adzuna job search API app ID",
@@ -131,30 +135,6 @@ class Settings(BaseSettings):
     STRIPE_PRICE_ID_ENTERPRISE: Optional[str] = Field(
         default=None,
         description="Stripe Price ID for Enterprise plan",
-    )
-
-    # ── OPTIONAL: External Job Sources ──────────────────────────
-    ADZUNA_APP_ID: Optional[str] = Field(default=None)
-    ADZUNA_API_KEY: Optional[str] = Field(default=None)
-    JOOBLE_API_KEY: Optional[str] = Field(default=None)
-
-    # ── OPTIONAL: Gmail OAuth ───────────────────────────────────
-    GOOGLE_CLIENT_ID: Optional[str] = Field(default=None)
-    GOOGLE_CLIENT_SECRET: Optional[str] = Field(default=None)
-    GOOGLE_REDIRECT_URI: Optional[str] = Field(
-        default=None,
-        description="Must match Google OAuth app setting",
-    )
-
-    # ── OPTIONAL: Observability ─────────────────────────────────
-    LANGFUSE_PUBLIC_KEY: Optional[str] = Field(
-        default=None,
-        description="Langfuse public key (AI observability)",
-    )
-    LANGFUSE_SECRET_KEY: Optional[str] = Field(default=None)
-    LANGFUSE_HOST: str = Field(
-        default="https://cloud.langfuse.com",
-        description="Langfuse API host",
     )
 
     # ── OPTIONAL: Error Monitoring ──────────────────────────────

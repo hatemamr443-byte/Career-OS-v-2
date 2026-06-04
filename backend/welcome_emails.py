@@ -4,16 +4,16 @@ Sends onboarding emails to new users at: day 0, 1, 3, 7.
 Called from auth.py on new user creation.
 Cron-triggered for day 1/3/7 follow-ups.
 """
-import os
 import logging
 from datetime import datetime, timezone, timedelta
 from db import users, emails_sent
 from models import new_id
+from config import settings
 
 logger = logging.getLogger(__name__)
 
-SENDER    = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
-APP_URL   = os.environ.get("DASHBOARD_URL", "https://career-os-web.onrender.com")
+SENDER  = settings.SENDER_EMAIL or "onboarding@resend.dev"
+APP_URL = settings.DASHBOARD_URL or "https://career-os-web.onrender.com"
 
 
 # ── Email templates ───────────────────────────────────────────────
@@ -212,7 +212,7 @@ async def _send_if_not_sent(user_id: str, email: str, key: str, content: dict) -
 
     try:
         import resend
-        resend.api_key = os.environ.get("RESEND_API_KEY", "")
+        resend.api_key = settings.RESEND_API_KEY or ""
         resend.Emails.send({
             "from":    SENDER,
             "to":      [email],
