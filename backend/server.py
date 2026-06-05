@@ -295,10 +295,14 @@ _cors_origins = [o.strip() for o in _cfg.CORS_ORIGINS.split(",") if o.strip()]
 if not _cors_origins:
     _cors_origins = ["*"]
 
+# SECURITY: credentials=True requires specific origins, not "*"
+# When CORS_ORIGINS="*" (dev mode), disable credentials to avoid browser rejection
+_allow_credentials = "*" not in _cors_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
+    allow_credentials=_allow_credentials,
     allow_origins=_cors_origins,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Cron-Token", "Stripe-Signature"],
 )

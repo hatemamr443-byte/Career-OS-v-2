@@ -1,5 +1,4 @@
 """Gmail OAuth integration — real read-only inbox access."""
-import os
 import urllib.parse
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -39,6 +38,25 @@ def _creds() -> tuple[str, str, str]:
 async def gmail_connect(user=Depends(get_current_user)):
     """Return Google OAuth URL for user to authorize Gmail access."""
     cid, _, redirect = _creds()
+    
+    # SECURITY: Use random nonce as state (not predictable user_id)
+    import secrets
+    nonce = secrets.token_urlsafe(32)
+    
+    # Store nonce in DB (expires after 10 minutes)
+    from datetime import timedelta
+    await profiles.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {
+            "gmail_oauth_nonce": nonce,
+            "gmail_oauth_nonce_expires": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat(),
+        }},
+        upsert=True,
+    )
+    
+    # Encode user_id with nonce: "user_id:nonce"
+    state = f"{user['user_id']}:{nonce}"
+    
     params = {
         "client_id":     cid,
         "redirect_uri":  redirect,
@@ -46,7 +64,7 @@ async def gmail_connect(user=Depends(get_current_user)):
         "scope":         SCOPES,
         "access_type":   "offline",
         "prompt":        "consent",
-        "state":         user["user_id"],
+        "state":         state,
     }
     return {"auth_url": GOOGLE_AUTH_URL + "?" + urllib.parse.urlencode(params)}
 
@@ -54,6 +72,31 @@ async def gmail_connect(user=Depends(get_current_user)):
 @router.get("/callback")
 async def gmail_callback(code: str, state: str):
     """OAuth callback — exchange code for tokens, persist refresh token."""
+    
+    # SECURITY: Validate state nonce
+    if ":" not in state:
+        raise HTTPException(400, "Invalid OAuth state")
+    
+    user_id, nonce = state.rsplit(":", 1)
+    
+    # Verify nonce against stored value
+    profile = await profiles.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    stored_nonce = profile.get("gmail_oauth_nonce")
+    nonce_expires = profile.get("gmail_oauth_nonce_expires")
+    
+    if not stored_nonce or stored_nonce != nonce:
+        raise HTTPException(400, "Invalid OAuth state: nonce mismatch")
+    
+    if nonce_expires:
+        if datetime.now(timezone.utc).isoformat() > nonce_expires:
+            raise HTTPException(400, "OAuth state expired, please try again")
+    
+    # Clear nonce after use (prevent replay)
+    await profiles.update_one(
+        {"user_id": user_id},
+        {"$unset": {"gmail_oauth_nonce": "", "gmail_oauth_nonce_expires": ""}},
+    )
+    
     cid, secret, redirect = _creds()
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.post(GOOGLE_TOKEN_URL, data={
@@ -70,7 +113,7 @@ async def gmail_callback(code: str, state: str):
     now    = datetime.now(timezone.utc).isoformat()
 
     await profiles.update_one(
-        {"user_id": state},
+        {"user_id": user_id},
         {"$set": {
             "gmail_connected":    True,
             "gmail_refresh_token": tokens.get("refresh_token", ""),
@@ -79,12 +122,12 @@ async def gmail_callback(code: str, state: str):
         upsert=True,
     )
 
-    # Award XP + log activity
-    await award_xp(state, "gmail_connected")
-    await log_activity(state, "gmail_connected", "Gmail connected",
+    await award_xp(user_id, "gmail_connected")
+    await log_activity(user_id, "gmail_connected", "Gmail connected",
                        "Gmail inbox integration activated", {})
 
-    frontend = os.environ.get("DASHBOARD_URL", "")
+    from config import settings
+    frontend = settings.DASHBOARD_URL or ""
     return RedirectResponse(f"{frontend}/emails?gmail=connected")
 
 

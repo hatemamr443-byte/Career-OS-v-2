@@ -24,8 +24,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
-# Admin token: use ADMIN_TOKEN if set, fall back to CRON_TOKEN for backward compatibility
-_ADMIN_TOKEN = settings.ADMIN_TOKEN or settings.CRON_TOKEN
+# Admin token: must be explicitly set — no fallback to CRON_TOKEN (security risk)
+# Set ADMIN_TOKEN environment variable separately from CRON_TOKEN
+_ADMIN_TOKEN = settings.ADMIN_TOKEN
 
 
 def _require_admin(x_admin_token: str = Header(default="")):

@@ -194,7 +194,7 @@ async def coach_history(user=Depends(get_current_user)):
 
 @router.post("/coach/chat")
 async def coach_chat(payload: CoachChatRequest, user=Depends(get_current_user)):
-    content = (payload.get("message") or "").strip()
+    content = (payload.message or "").strip()
     if not content:
         raise HTTPException(400, "message required")
 

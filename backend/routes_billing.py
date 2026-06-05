@@ -471,15 +471,38 @@ async def stripe_webhook(request: Request):
         logger = logging.getLogger(__name__)
         logger.warning("⚠️  Stripe webhook missing Stripe-Signature header (forged request?)")
         raise HTTPException(400, "Missing Stripe-Signature header")
-    
-    host_url = str(request.base_url).rstrip("/")
-    stripe = StripeCheckout(api_key=stripe_key, webhook_url=f"{host_url}/api/webhook/stripe")
+
+    # ── Real Stripe signature verification ───────────────────────
     try:
-        event = await stripe.handle_webhook(body, sig)
+        event = stripe_sdk.Webhook.construct_event(
+            payload=body,
+            sig_header=sig,
+            secret=stripe_secret,
+        )
+    except stripe_sdk.errors.SignatureVerificationError as ex:
+        logger = logging.getLogger(__name__)
+        logger.error("Stripe webhook signature mismatch: %s", ex)
+        raise HTTPException(400, "Webhook signature invalid")
     except Exception as ex:
         logger = logging.getLogger(__name__)
-        logger.error(f"Stripe webhook validation failed: {ex}")
-        raise HTTPException(400, f"Webhook signature validation failed: {ex}")
+        logger.error("Stripe webhook parsing failed: %s", ex)
+        raise HTTPException(400, f"Webhook error: {ex}")
+
+    # ── Process the verified event ────────────────────────────────
+    event_type = event.get("type", "")
+    session_data = event.get("data", {}).get("object", {})
+    session_id = session_data.get("id", "")
+    payment_status = session_data.get("payment_status", "")
+
+    class _Event:
+        """Wrapper to keep existing handler logic unchanged."""
+        pass
+    
+    ev = _Event()
+    ev.payment_status = payment_status
+    ev.session_id = session_id
+    ev.type = event_type
+    event = ev
 
     # Idempotent activation on payment_intent.succeeded / checkout.session.completed
     if event.payment_status == "paid" and event.session_id:

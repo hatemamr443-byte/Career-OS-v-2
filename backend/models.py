@@ -141,15 +141,19 @@ class ReferralApplyRequest(BaseModel):
 
 class CVScoreRequest(BaseModel):
     """Request to score a CV against a job description."""
-    cv_text: str = Field(..., min_length=10, description="CV/resume text")
+    cv_text: str = Field(default="", description="CV/resume text")
     job_description: str = Field(default="", description="Job description to score against")
+    job_id: Optional[str] = Field(default=None, description="Optional job ID to pull description from DB")
 
 
 class CoverLetterRequest(BaseModel):
     """Request to generate a cover letter."""
-    cv_text: str = Field(..., min_length=10, description="CV/resume text")
-    job_description: str = Field(..., min_length=10, description="Target job description")
-    tone: str = Field(default="professional", description="Letter tone: professional/friendly/concise")
+    cv_text: str = Field(default="", description="CV/resume text")
+    job_description: str = Field(default="", description="Target job description")
+    job_id: Optional[str] = Field(default=None, description="Optional job ID")
+    job_title: str = Field(default="Target Role", description="Job title")
+    company: str = Field(default="", description="Company name")
+    tone: str = Field(default="professional", description="Letter tone")
 
 
 class ExtensionJobRequest(BaseModel):

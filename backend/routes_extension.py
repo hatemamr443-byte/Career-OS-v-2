@@ -19,12 +19,12 @@ async def extension_save_job(payload: ExtensionJobRequest, user=Depends(get_curr
     Save a job from the Chrome Extension.
     Deduplicates, inserts to jobs collection, optionally creates application.
     """
-    title      = (payload.get("title") or "").strip()
-    company    = (payload.get("company") or "").strip()
-    location   = (payload.get("location") or "").strip()
-    source_url = (payload.get("source_url") or "").strip()
-    description = payload.get("description") or ""
-    source     = payload.get("source") or "extension"
+    title      = (payload.title or "").strip()
+    company    = (payload.company or "").strip()
+    location   = (payload.location or "").strip()
+    source_url = (payload.url or "").strip()
+    description = payload.description or ""
+    source     = "extension"
 
     if not title or not source_url:
         raise HTTPException(400, "title and source_url are required.")
@@ -42,13 +42,13 @@ async def extension_save_job(payload: ExtensionJobRequest, user=Depends(get_curr
             "title":          title,
             "company":        company,
             "location":       location,
-            "remote":         "remote" in location.lower() or payload.get("remote", False),
+            "remote":         "remote" in location.lower() or False,
             "source":         source,
             "source_url":     source_url,
             "description":    description[:5000],
             "skills_required": _extract_skills(description),
             "seniority":      _guess_seniority(title),
-            "salary_range":   payload.get("salary_range"),
+            "salary_range":   payload.salary,
             "salary_min":     None,
             "salary_max":     None,
             "content_hash":   content_hash,

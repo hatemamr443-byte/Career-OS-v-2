@@ -141,16 +141,18 @@ class Settings(BaseSettings):
         description="Stripe Price ID for Enterprise plan",
     )
 
-    # ── OPTIONAL: Error Monitoring ──────────────────────────────
+    # ── OPTIONAL: LLM Settings ──────────────────────────────────
+    LLM_TIMEOUT_S: int = Field(
+        default=45,
+        description="Timeout in seconds for LLM API calls",
+    )
+    LLM_MAX_RETRIES: int = Field(
+        default=2,
+        description="Max retries for failed LLM calls",
+    )
     SENTRY_DSN: Optional[str] = Field(
         default=None,
         description="Sentry DSN for error tracking (if not set, Sentry disabled)",
-    )
-
-    # ── OPTIONAL: External APIs ─────────────────────────────────
-    FIRECRAWL_API_KEY: Optional[str] = Field(
-        default=None,
-        description="Firecrawl web intelligence API",
     )
 
     # ── DEPLOYMENT ───────────────────────────────────────────────

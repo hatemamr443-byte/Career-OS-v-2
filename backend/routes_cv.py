@@ -24,9 +24,9 @@ router = APIRouter(prefix="/api/cv", tags=["cv"])
 @router.post("/ats-score")
 async def ats_score(payload: CVScoreRequest, user=Depends(get_current_user)):
     """Score CV against a job description for ATS compatibility."""
-    cv_text  = payload.get("cv_text", "")
-    job_text = payload.get("job_description", "")
-    job_id   = payload.get("job_id")
+    cv_text  = payload.cv_text or ""
+    job_text = payload.job_description or ""
+    job_id   = payload.job_id
 
     if not cv_text or not job_text:
         profile = await profiles.find_one({"user_id": user["user_id"]}, {"_id": 0}) or {}
@@ -170,9 +170,9 @@ async def tailor_cv(payload: dict, user=Depends(get_current_user)):
 @router.post("/cover-letter")
 async def generate_cover_letter(payload: CoverLetterRequest, user=Depends(get_current_user)):
     """Generate a tailored cover letter for a specific job."""
-    job_id   = payload.get("job_id")
-    tone     = payload.get("tone", "professional")
-    language = payload.get("language", "en")
+    job_id   = payload.job_id
+    tone     = payload.tone or "professional"
+    language = "en"
 
     profile = await profiles.find_one({"user_id": user["user_id"]}, {"_id": 0}) or {}
     cv_text = profile.get("cv_text", "")
@@ -184,9 +184,9 @@ async def generate_cover_letter(payload: CoverLetterRequest, user=Depends(get_cu
     await check_ai_quota(user, "cover_letter")
     job = await jobs.find_one({"job_id": job_id}, {"_id": 0}) or {}
 
-    job_title   = job.get("title")       or payload.get("job_title", "")
-    job_company = job.get("company")     or payload.get("company", "")
-    job_text    = job.get("description") or payload.get("job_description", "")
+    job_title   = job.get("title")       or payload.job_title or ""
+    job_company = job.get("company")     or payload.company or ""
+    job_text    = job.get("description") or payload.job_description or ""
 
     lang_instruction = {
         "ar": "Write the cover letter in Arabic (Modern Standard Arabic).",

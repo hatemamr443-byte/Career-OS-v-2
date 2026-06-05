@@ -121,7 +121,7 @@ async def _ensure_indexes() -> None:
         await jobs.create_index("location")
         await jobs.create_index("skills_required")
         await jobs.create_index("source")
-        await jobs.create_index("posted_date", expireAfterSeconds=86400*30)  # Auto-delete after 30 days
+        await jobs.create_index("posted_date")  # No TTL - preserve job history
         
         # Applications collection indexes
         await applications.create_index([("user_id", 1), ("job_id", 1)], unique=True)
