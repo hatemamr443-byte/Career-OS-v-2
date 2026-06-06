@@ -21,7 +21,8 @@ from datetime import datetime, timezone
 from typing import Literal
 
 from db import db as mongo_db
-from llm_service import llm_call, parse_json_loose
+from llm_service import llm_call
+from llm_schemas import parse_llm_json
 from career_intelligence import CareerIntelligence
 from memory_service import MemoryService
 from event_bus import event_bus
@@ -174,7 +175,7 @@ class Orchestrator:
 
     @staticmethod
     def parse_json(text: str) -> dict:
-        return parse_json_loose(text)
+        return parse_llm_json(text)
 
 
 # Singleton

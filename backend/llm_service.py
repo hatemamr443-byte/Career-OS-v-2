@@ -9,9 +9,7 @@ task="structured" → GPT-4         (guaranteed JSON schema)
 Circuit breaker: per-provider sliding-window (10 calls, >50% errors → open for 60s).
 """
 import asyncio
-import json
 import logging
-import re
 import time
 from collections import deque
 from typing import Literal
@@ -191,27 +189,9 @@ async def llm_call(*, task: TaskType, system: str, user: str,
 
 
 def parse_json_loose(text: str) -> dict:
-    if not text:
-        return {}
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        pass
-
-    fence = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
-    if fence:
-        try:
-            return json.loads(fence.group(1))
-        except json.JSONDecodeError:
-            pass
-
-    m = re.search(r"\{.*\}", text, re.DOTALL)
-    if m:
-        try:
-            return json.loads(m.group(0))
-        except json.JSONDecodeError:
-            pass
-    return {}
+    """Deprecated: use parse_llm_json from llm_schemas instead."""
+    from llm_schemas import parse_llm_json
+    return parse_llm_json(text)
 
 
 async def llm_health_check() -> dict:

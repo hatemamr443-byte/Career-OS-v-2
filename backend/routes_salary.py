@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from db import profiles, jobs
 from models import new_id
 from auth import get_current_user
-from llm_service import parse_json_loose
+from llm_schemas import parse_llm_json
 from orchestrator import orchestrator
 from ai_limits import check_ai_quota
 import logging
@@ -69,7 +69,7 @@ async def salary_range(payload: dict, user=Depends(get_current_user)):
             publish_event="salary_research",
             event_payload={"role": role, "location": location},
         )
-        result = parse_json_loose(text)
+        result = parse_llm_json(text)
         result.update({"role": role, "location": location,
                         "experience": experience,
                         "queried_at": datetime.now(timezone.utc).isoformat()})
@@ -119,7 +119,7 @@ async def evaluate_offer(payload: dict, user=Depends(get_current_user)):
             ),
             session_id=f"ofr_{user['user_id']}_{new_id('ofr')}",
         )
-        result = parse_json_loose(text)
+        result = parse_llm_json(text)
         result.update({"offered_salary": offered_salary, "currency": currency})
         return result
     except Exception as ex:
@@ -163,7 +163,7 @@ async def negotiation_script(payload: dict, user=Depends(get_current_user)):
             ),
             session_id=f"neg_{user['user_id']}_{new_id('neg')}",
         )
-        result = parse_json_loose(text)
+        result = parse_llm_json(text)
         result.update({"current_offer": current_offer, "target_salary": target_salary})
         return result
     except Exception as ex:
@@ -199,7 +199,7 @@ async def cost_of_living_comparison(
             ),
             session_id=f"col_{user['user_id']}_{hash(from_city + to_city) % 99999}",
         )
-        result = parse_json_loose(text)
+        result = parse_llm_json(text)
         result.update({"from_city": from_city, "to_city": to_city,
                         "current_salary": current_salary})
         return result

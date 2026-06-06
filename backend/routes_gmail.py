@@ -7,7 +7,8 @@ from datetime import datetime, timezone
 from db import profiles, emails as emails_col
 from models import new_id
 from auth import get_current_user
-from llm_service import llm_call, parse_json_loose
+from llm_service import llm_call
+from llm_schemas import parse_llm_json
 from activity import log_activity
 from xp import award_xp
 import logging
@@ -185,7 +186,7 @@ async def _classify_email(from_addr: str, subject: str, snippet: str) -> dict:
             user=f"From: {from_addr}\nSubject: {subject}\nSnippet: {snippet}",
             session_id=f"cls_{hash(subject) % 999999}",
         )
-        return parse_json_loose(text)
+        return parse_llm_json(text)
     except Exception as ex:
         logger.warning("email classification error: %s", ex)
         return {"classification": "other", "confidence": 0,

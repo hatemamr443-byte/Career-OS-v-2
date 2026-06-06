@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from db import profiles, jobs, interview_sessions
 from models import new_id
 from auth import get_current_user
-from llm_service import parse_json_loose
+from llm_schemas import parse_llm_json
 from orchestrator import orchestrator
 from event_bus import event_bus
 from activity import log_activity
@@ -76,7 +76,7 @@ async def generate_questions(payload: dict, user=Depends(get_current_user)):
             publish_event="interview_prep_started",
             event_payload={"job_id": job_id, "job_title": job_title, "company": job_company},
         )
-        result = parse_json_loose(text)
+        result = parse_llm_json(text)
 
         session_id = new_id("ivs")
         await interview_sessions.insert_one({
@@ -153,7 +153,7 @@ async def evaluate_answer(payload: dict, user=Depends(get_current_user)):
             publish_event="interview_answer_evaluated",
             event_payload={"session_id": session_id, "q_id": q_id},
         )
-        result = parse_json_loose(text)
+        result = parse_llm_json(text)
 
         if session_id:
             await interview_sessions.update_one(
@@ -206,7 +206,7 @@ async def company_research(
             publish_event="company_researched",
             event_payload={"company": company, "role": role},
         )
-        result = parse_json_loose(text)
+        result = parse_llm_json(text)
         result["company"] = company
         result["role"]    = role
         return result

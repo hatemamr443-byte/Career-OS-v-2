@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pypdf import PdfReader
 from db import profiles
 from auth import get_current_user
-from llm_service import parse_json_loose
+from llm_schemas import parse_llm_json
 from orchestrator import orchestrator
 from activity import log_activity
 from xp import award_xp
@@ -54,7 +54,7 @@ async def _parse_and_update_profile(
             session_id=f"cv_parse_{user_id}",
             context_depth="standard",
         )
-        data = parse_json_loose(text)
+        data = parse_llm_json(text)
     except Exception as ex:
         logger.warning("CV parse LLM failed (user=%s): %s", user_id, ex)
         data = {}

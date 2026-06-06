@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from db import profiles, jobs, cv_versions
 from models import new_id, CVScoreRequest, CoverLetterRequest
 from auth import get_current_user
-from llm_service import parse_json_loose
+from llm_schemas import parse_llm_json
 from orchestrator import orchestrator
 from activity import log_activity
 from xp import award_xp
@@ -66,7 +66,7 @@ async def ats_score(payload: CVScoreRequest, user=Depends(get_current_user)):
             publish_event="ats_scored",
             event_payload={"job_id": job_id},
         )
-        result = parse_json_loose(text)
+        result = parse_llm_json(text)
         result["job_id"]    = job_id
         result["scored_at"] = datetime.now(timezone.utc).isoformat()
         return result
@@ -131,7 +131,7 @@ async def tailor_cv(payload: dict, user=Depends(get_current_user)):
             publish_event="cv_tailored",
             event_payload={"job_id": job_id, "job_title": job_title},
         )
-        result = parse_json_loose(text)
+        result = parse_llm_json(text)
 
         version_id = new_id("cvv")
         await cv_versions.insert_one({
@@ -229,7 +229,7 @@ async def generate_cover_letter(payload: CoverLetterRequest, user=Depends(get_cu
             publish_event="cover_letter_generated",
             event_payload={"job_id": job_id},
         )
-        result = parse_json_loose(text)
+        result = parse_llm_json(text)
         result["job_id"]   = job_id
         result["language"] = language
         result["tone"]     = tone

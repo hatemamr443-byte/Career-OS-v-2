@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from db import profiles, jobs
 from auth import get_current_user
-from llm_service import parse_json_loose
+from llm_schemas import parse_llm_json
 from orchestrator import orchestrator
 from activity import log_activity
 import logging
@@ -27,10 +27,9 @@ async def _get_profile_and_job(user_id: str, job_id: str) -> tuple[dict, dict]:
 
 @router.post("/tailor/{job_id}")
 async def tailor_cv(job_id: str, user=Depends(get_current_user)):
-    """
-    Rewrite CV to match a specific job description.
-    Returns tailored CV text + list of changes made.
-    """
+    """Rewrite CV to match a specific job description."""
+    from routes_cv import check_ai_quota
+    await check_ai_quota(user, "cv_tailor")
     profile, job = await _get_profile_and_job(user["user_id"], job_id)
 
     system = (
@@ -65,7 +64,7 @@ async def tailor_cv(job_id: str, user=Depends(get_current_user)):
             user_message=user_prompt,
             session_id=f"tailor_{user['user_id']}_{job_id}",
         )
-        result = parse_json_loose(raw)
+        result = parse_llm_json(raw)
     except Exception as ex:
         logger.error("tailor_cv failed: %s", ex)
         raise HTTPException(500, "CV tailoring failed. Please try again.")
@@ -142,7 +141,7 @@ async def generate_cover_letter(
             user_message=user_prompt,
             session_id=f"cover_{user['user_id']}_{job_id}",
         )
-        result = parse_json_loose(raw)
+        result = parse_llm_json(raw)
     except Exception as ex:
         logger.error("cover_letter failed: %s", ex)
         raise HTTPException(500, "Cover letter generation failed. Please try again.")
@@ -206,7 +205,7 @@ async def ats_score(job_id: str, user=Depends(get_current_user)):
             user_message=user_prompt,
             session_id=f"ats_{user['user_id']}_{job_id}",
         )
-        result = parse_json_loose(raw)
+        result = parse_llm_json(raw)
     except Exception as ex:
         logger.error("ats_score failed: %s", ex)
         raise HTTPException(500, "ATS scoring failed. Please try again.")
@@ -267,7 +266,7 @@ async def interview_prep(job_id: str, user=Depends(get_current_user)):
             user_message=user_prompt,
             session_id=f"interview_{user['user_id']}_{job_id}",
         )
-        result = parse_json_loose(raw)
+        result = parse_llm_json(raw)
     except Exception as ex:
         logger.error("interview_prep failed: %s", ex)
         raise HTTPException(500, "Interview prep failed. Please try again.")
@@ -338,7 +337,7 @@ async def salary_intelligence(job_id: str, user=Depends(get_current_user)):
             user_message=user_prompt,
             session_id=f"salary_{user['user_id']}_{job_id}",
         )
-        result = parse_json_loose(raw)
+        result = parse_llm_json(raw)
     except Exception as ex:
         logger.error("salary_intel failed: %s", ex)
         raise HTTPException(500, "Salary analysis failed. Please try again.")

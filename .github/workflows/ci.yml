@@ -1,7 +1,5 @@
-# ─────────────────────────────────────────────────────────────────
 # Career OS — GitHub Actions CI
 # Runs on every push and PR to main / develop
-# ─────────────────────────────────────────────────────────────────
 name: CI
 
 on:
@@ -53,11 +51,19 @@ jobs:
           pip install \
             --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/ \
             -r backend/requirements.txt \
-            ruff pytest pytest-asyncio
+            ruff pytest pytest-asyncio pytest-cov bandit
 
       - name: Lint (ruff)
-        # E501 = line-too-long: style preference, not a bug
         run: ruff check backend --ignore E501
+
+      - name: Security scan (bandit)
+        run: |
+          bandit -r backend \
+            --exclude backend/tests \
+            --severity-level medium \
+            --confidence-level medium \
+            -f txt || true
+        continue-on-error: true
 
       - name: Start backend (background)
         working-directory: backend
@@ -81,12 +87,25 @@ jobs:
           kill $(cat /tmp/uvicorn.pid) 2>/dev/null || true
           exit 1
 
-      - name: Run tests
-        # Run only the core integration tests (backend_test.py)
-        # iter*.py tests are feature-specific tests for manual runs
+      - name: Run tests with coverage
         env:
           PYTHONPATH: backend
-        run: pytest -vv backend/tests/backend_test.py --tb=short -x
+        run: |
+          pytest -vv backend/tests/backend_test.py \
+            --tb=short -x \
+            --cov=backend \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --junit-xml=test-results.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: |
+            test-results.xml
+            coverage.xml
 
       - name: Stop backend
         if: always()
@@ -100,8 +119,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # package.json declares "packageManager": "npm@10.8.2"
-      # package-lock.json is at frontend/package-lock.json
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -112,14 +129,22 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Lint (ESLint)
+        working-directory: frontend
+        run: npx eslint src --max-warnings 50 || true
+        continue-on-error: true
+
+      - name: Security audit
+        working-directory: frontend
+        run: npm audit --audit-level=critical || true
+        continue-on-error: true
+
       - name: Build
         working-directory: frontend
         env:
           REACT_APP_BACKEND_URL: http://127.0.0.1:8001
           ENABLE_HEALTH_CHECK: "false"
-          # CI=false prevents CRA from treating warnings as errors
           CI: "false"
-          # OpenSSL compatibility for Node 24 + webpack 4 (react-scripts 5)
           NODE_OPTIONS: --openssl-legacy-provider
         run: npm run build
 
@@ -130,11 +155,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Block committed .env files
         run: |
-          if find . \
-               -name ".env" \
+          if find . -name ".env" \
                -not -name ".env.example" \
                -not -path "./.git/*" \
              | grep -q .; then
@@ -145,8 +171,8 @@ jobs:
 
       - name: Block hardcoded secrets
         run: |
-          # Exclude ci.yml itself (contains the grep pattern as a string)
-          if grep -rn "EMERGENT_LLM_KEY=sk-\|ghp_[A-Za-z0-9]" \
+          if grep -rn \
+               "EMERGENT_LLM_KEY=sk-\|ghp_[A-Za-z0-9]\|sk_live_[A-Za-z0-9]\|AKIA[A-Z0-9]" \
                --include="*.py" --include="*.js" --include="*.jsx" \
                --include="*.ts"  --include="*.tsx" \
                --exclude-dir=".git" . 2>/dev/null \
@@ -155,3 +181,13 @@ jobs:
             exit 1
           fi
           echo "✅ No hardcoded secrets found"
+
+      - name: Check for exposed tokens in markdown/docs
+        run: |
+          if grep -rn "ghp_[A-Za-z0-9]\{36\}" \
+               --include="*.md" \
+               --exclude-dir=".git" . 2>/dev/null; then
+            echo "❌ GitHub token found in documentation"
+            exit 1
+          fi
+          echo "✅ No tokens in docs"

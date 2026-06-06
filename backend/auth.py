@@ -107,12 +107,15 @@ async def create_session(payload: dict, response: Response):
         upsert=True,
     )
 
+    from config import settings as _cfg
+    is_production = _cfg.ENVIRONMENT in ("production", "staging")
+
     response.set_cookie(
         key="session_token",
         value=session_token,
         httponly=True,
-        secure=True,
-        samesite="none",
+        secure=is_production,         # HTTPS only in prod; HTTP allowed in dev
+        samesite="none" if is_production else "lax",  # none+secure in prod, lax in dev
         path="/",
         max_age=7 * 24 * 60 * 60,
     )

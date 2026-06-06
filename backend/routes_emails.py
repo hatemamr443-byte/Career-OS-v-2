@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from db import emails
 from auth import get_current_user
-from llm_service import parse_json_loose
+from llm_schemas import parse_llm_json
 from orchestrator import orchestrator
 
 router = APIRouter(prefix="/api/emails", tags=["emails"])
@@ -59,7 +59,7 @@ async def classify_email(email_id: str, user=Depends(get_current_user)):
             user_message=user_prompt,
             session_id=f"email_{email_id}",
         )
-        data = parse_json_loose(text)
+        data = parse_llm_json(text)
         cls = data.get("classification", "other")
         if cls not in CLASSES:
             cls = "other"

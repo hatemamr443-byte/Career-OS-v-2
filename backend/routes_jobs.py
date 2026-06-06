@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from db import jobs, applications, profiles, decisions, bookmarks
 from models import new_id
 from auth import get_current_user
-from llm_service import parse_json_loose
+from llm_schemas import parse_llm_json
 from job_sources import ingest_remotive, ingest_all
 from quota import (
     get_effective_plan,
@@ -147,7 +147,7 @@ async def compute_match(job_id: str, user=Depends(get_current_user)):
             publish_event="match_analyzed",
             event_payload={"job_id": job_id, "title": job.get("title")},
         )
-        data = parse_json_loose(text)
+        data = parse_llm_json(text)
         if not data or "score" not in data:
             raise ValueError("bad llm output")
     except Exception:

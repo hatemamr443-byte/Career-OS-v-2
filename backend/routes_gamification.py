@@ -4,7 +4,7 @@ from datetime import datetime, timezone, timedelta
 from db import users, missions, applications, profiles, coach_messages
 from models import new_id, CoachChatRequest
 from auth import get_current_user
-from llm_service import parse_json_loose
+from llm_schemas import parse_llm_json
 from orchestrator import orchestrator
 
 router = APIRouter(prefix="/api", tags=["gamification"])
@@ -73,7 +73,7 @@ async def get_today_missions(user=Depends(get_current_user)):
             user_message=context,
             session_id=f"missions_{user['user_id']}_{today}",
         )
-        data = parse_json_loose(text)
+        data = parse_llm_json(text)
         ms = data.get("missions", [])
         if not ms:
             raise ValueError("empty")
