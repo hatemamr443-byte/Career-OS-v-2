@@ -44,15 +44,12 @@ async def list_jobs(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
 ):
-    query = {}
+    query: dict = {}
     if remote_only:
         query["remote"] = True
     if q:
-        query["$or"] = [
-            {"title": {"$regex": q, "$options": "i"}},
-            {"company": {"$regex": q, "$options": "i"}},
-            {"description": {"$regex": q, "$options": "i"}},
-        ]
+        # Use MongoDB text index for efficient full-text search (no regex scan)
+        query["$text"] = {"$search": q}
     total = await jobs.count_documents(query)
     skip = (page - 1) * size
     docs = await jobs.find(query, {"_id": 0}).skip(skip).limit(size).to_list(size)
