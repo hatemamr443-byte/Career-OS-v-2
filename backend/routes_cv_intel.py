@@ -28,7 +28,7 @@ async def _get_profile_and_job(user_id: str, job_id: str) -> tuple[dict, dict]:
 @router.post("/tailor/{job_id}")
 async def tailor_cv(job_id: str, user=Depends(get_current_user)):
     """Rewrite CV to match a specific job description."""
-    from routes_cv import check_ai_quota
+    from ai_limits import check_ai_quota
     await check_ai_quota(user, "cv_tailor")
     profile, job = await _get_profile_and_job(user["user_id"], job_id)
 
