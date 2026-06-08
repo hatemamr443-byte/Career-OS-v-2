@@ -45,7 +45,7 @@ async def get_today_missions(user=Depends(get_current_user)):
 
     # Generate via AI based on user state
     profile = await profiles.find_one({"user_id": user["user_id"]}, {"_id": 0})
-    apps = await applications.find({"user_id": user["user_id"]}, {"_id": 0}).to_list(100)
+    apps = await applications.find({"user_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).limit(50).to_list(50)
     pending = [a for a in apps if a["status"] in ("under_review", "interview")]
     discovered = [a for a in apps if a["status"] == "discovered"]
 

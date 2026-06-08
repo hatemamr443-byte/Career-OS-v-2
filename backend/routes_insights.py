@@ -8,7 +8,7 @@ router = APIRouter(prefix="/api/insights", tags=["insights"])
 
 @router.get("")
 async def insights(user=Depends(get_current_user)):
-    apps = await applications.find({"user_id": user["user_id"]}, {"_id": 0}).to_list(500)
+    apps = await applications.find({"user_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).limit(200).to_list(200)
     total = len(apps)
     by_status = {"discovered": 0, "applied": 0, "under_review": 0, "interview": 0, "offer": 0, "rejected": 0}
     for a in apps:

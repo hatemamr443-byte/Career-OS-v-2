@@ -204,18 +204,39 @@ async def ingest_jobs(payload: dict = None, user=Depends(get_current_user)):
 
 
 @router.get("/applications")
-async def list_applications(user=Depends(get_current_user)):
-    docs = await applications.find({"user_id": user["user_id"]}, {"_id": 0}).to_list(500)
+async def list_applications(
+    user=Depends(get_current_user),
+    page: int = Query(1, ge=1),
+    size: int = Query(50, ge=1, le=200),
+    status: str | None = Query(None),
+):
+    """List user applications with pagination."""
+    query: dict = {"user_id": user["user_id"]}
+    if status:
+        query["status"] = status
+    skip   = (page - 1) * size
+    total  = await applications.count_documents(query)
+    docs   = await applications.find(query, {"_id": 0}).sort(
+        "updated_at", -1
+    ).skip(skip).limit(size).to_list(size)
     # attach job info
     job_ids = [d["job_id"] for d in docs]
-    job_map = {}
+    job_map: dict = {}
     if job_ids:
         async for j in jobs.find({"job_id": {"$in": job_ids}}, {"_id": 0}):
             job_map[j["job_id"]] = j
     for d in docs:
         d["job"] = job_map.get(d["job_id"])
-    docs.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
-    return {"applications": docs, "count": len(docs)}
+    return {
+        "applications": docs,
+        "count": len(docs),
+        "pagination": {
+            "page": page,
+            "size": size,
+            "total": total,
+            "pages": -(-total // size),  # ceiling division
+        },
+    }
 
 
 @router.post("/applications")
