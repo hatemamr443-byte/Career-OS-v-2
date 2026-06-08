@@ -160,7 +160,8 @@ async def trial_status(user=Depends(get_current_user)):
                     {"$set": {"trial_active": False}},
                 )
         except Exception:
-            pass
+            import logging as _log
+            _log.getLogger(__name__).warning("Suppressed exception", exc_info=True)
 
     return {
         "trial_active": trial_active,
@@ -213,8 +214,8 @@ async def referral_stats(user=Depends(get_current_user)):
 @router.post("/referral/apply")
 async def apply_referral(payload: ReferralApplyRequest, user=Depends(get_current_user)):
     """Apply a referral code when a new user signs up."""
-    code = payload.code.strip()
-    
+    code = payload.code.strip().upper()
+
     if not code:
         raise HTTPException(400, "Referral code is required.")
 
@@ -223,24 +224,41 @@ async def apply_referral(payload: ReferralApplyRequest, user=Depends(get_current
         raise HTTPException(404, "Invalid referral code.")
 
     referrer_id = ref_doc["referrer_id"]
+
+    # ── Fraud Prevention ─────────────────────────────────────────
+    # 1. Self-referral check
     if referrer_id == user["user_id"]:
         raise HTTPException(400, "You cannot refer yourself.")
 
-    # Check not already used
-    already = await referrals.find_one({
-        "code": code,
-        "pending": user["user_id"],
-    })
+    # 2. Already used this code
+    already = await referrals.find_one({"code": code, "pending": user["user_id"]})
     if already:
         raise HTTPException(400, "You have already used this referral code.")
 
-    # Add to pending (converted when user upgrades)
+    # 3. Account must be older than 1 minute (prevent throwaway accounts)
+    user_doc = await users.find_one({"user_id": user["user_id"]}) or {}
+    created_at = user_doc.get("created_at")
+    if created_at:
+        account_age = (datetime.now(timezone.utc) - created_at).total_seconds()
+        if account_age < 60:
+            raise HTTPException(429, "New account. Please wait before applying a referral code.")
+
+    # 4. Limit total referrals per code (prevent farming)
+    conversion_count = ref_doc.get("conversions", 0)
+    pending_count = len(ref_doc.get("pending", []))
+    if conversion_count + pending_count >= 50:
+        raise HTTPException(400, "This referral code has reached its maximum uses.")
+
+    # 5. User must not have already been referred
+    already_referred = user_doc.get("referred_by")
+    if already_referred:
+        raise HTTPException(400, "You have already used a referral code.")
+
+    # ── Apply referral ────────────────────────────────────────────
     await referrals.update_one(
         {"code": code},
         {"$addToSet": {"pending": user["user_id"]}},
     )
-
-    # Give new user a bonus trial day
     await users.update_one(
         {"user_id": user["user_id"]},
         {"$set": {"referred_by": code}},
@@ -313,7 +331,8 @@ async def my_plan(user=Depends(get_current_user)):
             if exp < datetime.now(timezone.utc):
                 plan = "free"
         except Exception:
-            pass
+            import logging as _log
+            _log.getLogger(__name__).warning("Suppressed exception", exc_info=True)
     return {"plan": plan, "plan_expires_at": expires}
 
 
@@ -488,41 +507,73 @@ async def stripe_webhook(request: Request):
         logger.error("Stripe webhook parsing failed: %s", ex)
         raise HTTPException(400, f"Webhook error: {ex}")
 
-    # ── Process the verified event ────────────────────────────────
-    event_type = event.get("type", "")
-    session_data = event.get("data", {}).get("object", {})
-    session_id = session_data.get("id", "")
-    payment_status = session_data.get("payment_status", "")
+    # ── Process verified Stripe events ───────────────────────────
+    event_type   = event.get("type", "")
+    event_data   = event.get("data", {}).get("object", {})
+    logger_ws    = logging.getLogger(__name__)
+    logger_ws.info("Stripe webhook: %s", event_type)
 
-    class _Event:
-        """Wrapper to keep existing handler logic unchanged."""
-        pass
-    
-    ev = _Event()
-    ev.payment_status = payment_status
-    ev.session_id = session_id
-    ev.type = event_type
-    event = ev
+    # ── checkout.session.completed / payment_intent.succeeded ────
+    if event_type in ("checkout.session.completed", "payment_intent.succeeded"):
+        session_id     = event_data.get("id", "")
+        payment_status = event_data.get("payment_status", "")
+        if payment_status == "paid" and session_id:
+            txn = await payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
+            if txn and txn.get("payment_status") != "paid":
+                plan_id    = txn["plan_id"]
+                days       = PLANS.get(plan_id, {}).get("days", 30)
+                expires_at = datetime.now(timezone.utc) + timedelta(days=days)
+                await users.update_one(
+                    {"user_id": txn["user_id"]},
+                    {"$set": {"plan": plan_id, "plan_expires_at": expires_at.isoformat()}},
+                )
+                await payment_transactions.update_one(
+                    {"session_id": session_id},
+                    {"$set": {
+                        "payment_status": "paid",
+                        "status": "completed",
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    }},
+                )
+                await _reward_referrer(txn["user_id"])
 
-    # Idempotent activation on payment_intent.succeeded / checkout.session.completed
-    if event.payment_status == "paid" and event.session_id:
-        txn = await payment_transactions.find_one(
-            {"session_id": event.session_id}, {"_id": 0}
-        )
-        if txn and txn.get("payment_status") != "paid":
-            plan_id = txn["plan_id"]
-            days = PLANS.get(plan_id, {}).get("days", 30)
-            expires_at = datetime.now(timezone.utc) + timedelta(days=days)
+    # ── invoice.payment_failed ────────────────────────────────────
+    elif event_type == "invoice.payment_failed":
+        customer_id = event_data.get("customer", "")
+        if customer_id:
             await users.update_one(
-                {"user_id": txn["user_id"]},
-                {"$set": {"plan": plan_id, "plan_expires_at": expires_at.isoformat()}},
+                {"stripe_customer_id": customer_id},
+                {"$set": {"plan": "free", "payment_failed": True}},
             )
-            await payment_transactions.update_one(
-                {"session_id": event.session_id},
+            logger_ws.warning("Payment failed for Stripe customer: %s", customer_id)
+
+    # ── customer.subscription.deleted / charge.refunded ──────────
+    elif event_type in ("customer.subscription.deleted", "charge.refunded"):
+        customer_id = event_data.get("customer", "")
+        if customer_id:
+            await users.update_one(
+                {"stripe_customer_id": customer_id},
                 {"$set": {
-                    "payment_status": "paid",
-                    "status": "completed",
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "plan": "free",
+                    "plan_expires_at": datetime.now(timezone.utc).isoformat(),
+                    "subscription_cancelled": True,
                 }},
             )
-    return {"received": True}
+            logger_ws.info("Subscription cancelled/refunded for: %s", customer_id)
+
+    # ── invoice.payment_succeeded ─────────────────────────────────
+    elif event_type == "invoice.payment_succeeded":
+        customer_id  = event_data.get("customer", "")
+        amount_paid  = event_data.get("amount_paid", 0)
+        if customer_id and amount_paid > 0:
+            expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+            await users.update_one(
+                {"stripe_customer_id": customer_id},
+                {"$set": {
+                    "plan": "pro",
+                    "plan_expires_at": expires_at.isoformat(),
+                    "payment_failed": False,
+                }},
+            )
+
+    return {"received": True, "event_type": event_type}

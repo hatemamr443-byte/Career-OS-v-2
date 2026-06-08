@@ -48,23 +48,42 @@ from seed import seed_user_emails, seed_user_profile
 
 # ── Environment Validation (fail-fast on startup) ───────────────────
 def _validate_environment() -> None:
-    """Verify critical environment variables are set. Fails hard if not."""
-    # Settings object already does validation in config.py
-    # This function is now just for informational logging
+    """Verify critical environment variables. Fail hard if missing."""
     logger = logging.getLogger(__name__)
+    errors: list[str] = []
+
+    if not _cfg.MONGO_URL:
+        errors.append("MONGO_URL is required")
+    if not _cfg.DB_NAME:
+        errors.append("DB_NAME is required")
+
+    # Production-only strict checks
+    if _cfg.ENVIRONMENT in ("production", "staging"):
+        if _cfg.CORS_ORIGINS == "*":
+            logger.warning("⚠️  CORS_ORIGINS='*' is insecure in %s!", _cfg.ENVIRONMENT)
+        if not _cfg.STRIPE_SECRET_KEY:
+            logger.warning("⚠️  STRIPE_SECRET_KEY not set — billing disabled")
+        if not _cfg.STRIPE_WEBHOOK_SECRET:
+            logger.warning("⚠️  STRIPE_WEBHOOK_SECRET not set — webhooks will reject all events")
+        if not _cfg.ADMIN_TOKEN:
+            errors.append("ADMIN_TOKEN is required in production")
+        if not _cfg.CRON_TOKEN:
+            errors.append("CRON_TOKEN is required in production")
+
+    if errors:
+        for e in errors:
+            logger.critical("❌ Config error: %s", e)
+        raise RuntimeError(f"Startup failed — missing config: {', '.join(errors)}")
+
+    llm_count = sum([
+        bool(_cfg.EMERGENT_LLM_KEY),
+        bool(_cfg.ANTHROPIC_API_KEY),
+        bool(_cfg.OPENAI_API_KEY),
+        bool(_cfg.GEMINI_API_KEY),
+    ])
     logger.info(
-        "✅ Environment validation passed (via config.settings)",
-        extra={
-            "mongo_url_set": bool(_cfg.MONGO_URL),
-            "db_name": _cfg.DB_NAME,
-            "environment": _cfg.ENVIRONMENT,
-            "llm_providers_available": sum([
-                bool(_cfg.EMERGENT_LLM_KEY),
-                bool(_cfg.ANTHROPIC_API_KEY),
-                bool(_cfg.OPENAI_API_KEY),
-                bool(_cfg.GEMINI_API_KEY),
-            ]),
-        },
+        "✅ Environment validation passed | env=%s | llm_providers=%d",
+        _cfg.ENVIRONMENT, llm_count,
     )
 
 from config import settings as _cfg  # noqa: E402

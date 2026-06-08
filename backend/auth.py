@@ -93,7 +93,8 @@ async def create_session(payload: dict, response: Response):
             import asyncio
             asyncio.create_task(send_welcome_sequence_day0(user_id, email, name))
         except Exception:
-            pass
+            import logging as _log
+            _log.getLogger(__name__).warning("Suppressed exception", exc_info=True)
 
     expires_at = datetime.now(timezone.utc) + timedelta(days=7)
     await sessions.update_one(

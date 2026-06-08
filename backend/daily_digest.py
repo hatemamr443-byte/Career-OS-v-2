@@ -64,7 +64,8 @@ async def run_daily_digest_for_user(user_doc: dict, dashboard_url: str = DASHBOA
             if datetime.now(timezone.utc) - last_sent < timedelta(hours=20):
                 return {"user_id": user_id, "skipped": True, "reason": "last_email_sent < 20h"}
         except Exception:
-            pass
+            import logging as _log
+            _log.getLogger(__name__).warning("Suppressed exception", exc_info=True)
 
     # Refresh job pool keyed on user's top skill
     skills = profile.get("skills", [])
