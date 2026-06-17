@@ -28,6 +28,15 @@ class StripeCheckout:
         """Create Stripe checkout session. Returns mock in test/CI mode."""
         from config import settings
 
+        # SECURITY: amount must match a known plan price — prevents a
+        # tampered client from requesting an arbitrary (lower) price.
+        valid_amounts_cents = {int(round(p["amount"] * 100)) for p in PLANS.values()}
+        amount_cents = int(round(req.amount * 100))
+        if amount_cents not in valid_amounts_cents:
+            raise ValueError(
+                f"Invalid checkout amount: ${req.amount:.2f}. Must match a valid plan price."
+            )
+
         # In test/CI environment, return mock session to avoid real Stripe calls
         if settings.ENVIRONMENT in ("test", "ci") or (
             self.api_key and "placeholder" in self.api_key
@@ -239,9 +248,19 @@ async def apply_referral(payload: ReferralApplyRequest, user=Depends(get_current
     user_doc = await users.find_one({"user_id": user["user_id"]}) or {}
     created_at = user_doc.get("created_at")
     if created_at:
-        account_age = (datetime.now(timezone.utc) - created_at).total_seconds()
-        if account_age < 60:
-            raise HTTPException(429, "New account. Please wait before applying a referral code.")
+        # users.created_at is stored as an ISO string (see auth.py) — parse
+        # before arithmetic, otherwise this raises TypeError on every call.
+        if isinstance(created_at, str):
+            try:
+                created_at = datetime.fromisoformat(created_at)
+            except ValueError:
+                created_at = None
+        if created_at is not None:
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+            account_age = (datetime.now(timezone.utc) - created_at).total_seconds()
+            if account_age < 60:
+                raise HTTPException(429, "New account. Please wait before applying a referral code.")
 
     # 4. Limit total referrals per code (prevent farming)
     conversion_count = ref_doc.get("conversions", 0)

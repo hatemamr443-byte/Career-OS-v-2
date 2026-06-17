@@ -11,7 +11,7 @@ GET  /api/memory/working           — active session context
 GET  /api/memory/stats             — memory system statistics
 POST /api/memory/consolidate       — trigger memory consolidation
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from auth import get_current_user
 from episodic_memory import record_episode, recall_episodes
 from working_memory import working_memory
@@ -138,10 +138,11 @@ async def memory_stats(user=Depends(get_current_user)):
 # ── Manual Consolidation ──────────────────────────────────────────
 
 @router.post("/consolidate")
-async def trigger_consolidation(user=Depends(get_current_user)):
+async def trigger_consolidation(
+    background_tasks: BackgroundTasks,
+    user=Depends(get_current_user),
+):
     """Trigger memory consolidation for this user (async)."""
-    from fastapi.background import BackgroundTasks
     from memory_consolidation import consolidate_user_memory
-    bg = BackgroundTasks()
-    bg.add_task(consolidate_user_memory, user["user_id"])
+    background_tasks.add_task(consolidate_user_memory, user["user_id"])
     return {"ok": True, "message": "Memory consolidation started in background."}

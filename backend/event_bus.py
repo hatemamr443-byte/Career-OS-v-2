@@ -72,15 +72,21 @@ class EventBus:
             "created_at": now,
         }
 
-        # Durability: career_events (primary memory store) + outbox (replay)
+        # Durability: career_events (primary record) + outbox (replay log).
+        # Single try — if either write fails we log loudly; we do not roll
+        # back the in-memory dispatch below since handlers should still run
+        # off the freshest data even if persistence had a hiccup.
+        outbox_id = None
         try:
             await career_events.insert_one(dict(record))
+            outbox_doc = {**record, "delivered": False}
+            result = await self._outbox.insert_one(outbox_doc)
+            outbox_id = result.inserted_id
         except Exception as ex:
-            logger.error("EventBus: career_events insert failed: %s", ex)
-        try:
-            await self._outbox.insert_one({**record, "delivered": False})
-        except Exception as ex:
-            logger.error("EventBus: outbox insert failed: %s", ex)
+            logger.error(
+                "EventBus: persistence failed (event_type=%s, user=%s): %s",
+                event_type, user_id, ex, exc_info=True,
+            )
 
         self._published_count += 1
         self._recent.append(record)
@@ -90,19 +96,39 @@ class EventBus:
         # Dispatch — gather with return_exceptions to isolate failures
         handlers = self._subs.get(event_type, []) + self._subs.get("*", [])
         if not handlers:
+            # No subscribers to fail — outbox entry is effectively delivered
+            if outbox_id is not None:
+                try:
+                    await self._outbox.update_one(
+                        {"_id": outbox_id}, {"$set": {"delivered": True}}
+                    )
+                except Exception:
+                    pass
             return
 
         results = await asyncio.gather(
             *(self._safe_dispatch(h, user_id, payload) for h in handlers),
             return_exceptions=True,
         )
+        any_failed = False
         for h, r in zip(handlers, results):
             if isinstance(r, Exception):
+                any_failed = True
                 self._handler_failures += 1
                 logger.warning(
                     "EventBus: handler %s failed for %s: %s",
                     h.__name__, event_type, r,
                 )
+
+        # Mark delivered only if ALL subscribers succeeded — otherwise leave
+        # delivered=False so the admin replay endpoint can retry it later.
+        if outbox_id is not None and not any_failed:
+            try:
+                await self._outbox.update_one(
+                    {"_id": outbox_id}, {"$set": {"delivered": True}}
+                )
+            except Exception as ex:
+                logger.warning("EventBus: failed to mark outbox delivered: %s", ex)
 
     async def _safe_dispatch(
         self, handler: EventHandler, user_id: str, payload: dict

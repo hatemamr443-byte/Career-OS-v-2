@@ -211,14 +211,22 @@ async def _send_if_not_sent(user_id: str, email: str, key: str, content: dict) -
         return False
 
     try:
+        import asyncio
         import resend
         resend.api_key = settings.RESEND_API_KEY or ""
-        resend.Emails.send({
-            "from":    SENDER,
-            "to":      [email],
-            "subject": content["subject"],
-            "html":    content["html"],
-        })
+        # resend.Emails.send() is a synchronous/blocking HTTP call.
+        # Running it directly in an async function blocks the entire
+        # event loop for the duration of the network request, stalling
+        # every other concurrent request on this worker.
+        await asyncio.to_thread(
+            resend.Emails.send,
+            {
+                "from":    SENDER,
+                "to":      [email],
+                "subject": content["subject"],
+                "html":    content["html"],
+            },
+        )
         await emails_sent.insert_one({
             "_id":          new_id("eml_sent"),
             "user_id":      user_id,

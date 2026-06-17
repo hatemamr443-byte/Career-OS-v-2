@@ -1,5 +1,5 @@
 """Pydantic models for AI Career OS."""
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import List, Optional, Dict, Any, Literal
 from datetime import datetime, timezone
 import uuid
@@ -130,6 +130,17 @@ class CheckoutRequest(BaseModel):
     """Request to create a Stripe checkout session."""
     plan_id: Literal["pro", "team"]  # Only valid plans allowed
     origin_url: str  # Return URL after checkout
+
+    @field_validator("origin_url")
+    @classmethod
+    def validate_origin_url(cls, v: str) -> str:
+        from urllib.parse import urlparse
+        parsed = urlparse(v)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError("origin_url must use http or https")
+        if not parsed.netloc:
+            raise ValueError("origin_url must include a valid host")
+        return v
 
 
 class ReferralApplyRequest(BaseModel):

@@ -104,18 +104,29 @@ async def get_profile(user=Depends(get_current_user)):
 
 @router.put("")
 async def update_profile(payload: dict, user=Depends(get_current_user)):
-    payload.pop("user_id", None)
-    payload["updated_at"] = datetime.now(timezone.utc).isoformat()
+    # SECURITY: Whitelist — prevents injecting plan/trial/token fields via
+    # an arbitrary JSON body (e.g. {"plan": "pro", "trial_active": true}).
+    ALLOWED_FIELDS = {
+        "full_name", "location", "country", "phone", "bio",
+        "title", "headline", "summary", "skills", "languages",
+        "experience", "education", "certifications", "years_experience",
+        "preferences", "career_goals", "target_roles",
+        "target_industries", "target_salary_min", "target_salary_max",
+        "remote_preference", "willing_to_relocate", "cv_text",
+        "linkedin_url", "github_url", "portfolio_url", "daily_matches",
+    }
+    safe_payload = {k: v for k, v in payload.items() if k in ALLOWED_FIELDS}
+    safe_payload["updated_at"] = datetime.now(timezone.utc).isoformat()
     await profiles.update_one(
         {"user_id": user["user_id"]},
-        {"$set": payload, "$setOnInsert": {"user_id": user["user_id"]}},
+        {"$set": safe_payload, "$setOnInsert": {"user_id": user["user_id"]}},
         upsert=True,
     )
     await log_activity(
         user["user_id"], "profile_updated",
         "Profile updated",
         "Profile information was updated",
-        {"fields": list(payload.keys())},
+        {"fields": list(safe_payload.keys())},
     )
     return await profiles.find_one({"user_id": user["user_id"]}, {"_id": 0}) or {}
 

@@ -87,11 +87,15 @@ async def create_session(payload: dict, response: Response):
         doc = user.model_dump()
         doc["created_at"] = doc["created_at"].isoformat()
         await users.insert_one(doc)
-        # Fire-and-forget welcome email
+        # Background welcome email — retried on failure, logged on final loss
         try:
             from welcome_emails import send_welcome_sequence_day0
-            import asyncio
-            asyncio.create_task(send_welcome_sequence_day0(user_id, email, name))
+            from background_tasks import create_background_task
+            create_background_task(
+                send_welcome_sequence_day0(user_id, email, name),
+                task_name=f"welcome_email:{user_id}",
+                max_retries=3,
+            )
         except Exception:
             import logging as _log
             _log.getLogger(__name__).warning("Suppressed exception", exc_info=True)
@@ -116,7 +120,11 @@ async def create_session(payload: dict, response: Response):
         value=session_token,
         httponly=True,
         secure=is_production,         # HTTPS only in prod; HTTP allowed in dev
-        samesite="none" if is_production else "lax",  # none+secure in prod, lax in dev
+        # "lax" allows top-level navigation (login redirects) while blocking
+        # cross-site POST/fetch — safer than "none" which permits all
+        # cross-origin sends and requires no-CSRF-token compensating controls
+        # we don't currently have. Render same-origin-ish deploy works with lax.
+        samesite="lax",
         path="/",
         max_age=7 * 24 * 60 * 60,
     )

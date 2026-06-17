@@ -54,7 +54,14 @@ def _check_rate_limit(ip: str, limit_per_min: int, limit_per_hour: int) -> None:
 
 
 async def rate_limit(request: Request) -> None:
-    """FastAPI dependency: standard rate limit (60/min, 1000/hr)."""
+    """FastAPI dependency: standard rate limit (60/min, 1000/hr).
+
+    Exempts health/docs endpoints (polled frequently by infra/CI) and
+    webhooks (protected by Stripe signature verification instead).
+    """
+    exempt_paths = {"/health", "/health/ready", "/docs", "/redoc", "/openapi.json"}
+    if request.url.path in exempt_paths or request.url.path.startswith("/api/webhook"):
+        return
     ip = _get_ip(request)
     _check_rate_limit(ip, LIMIT_PER_MINUTE, LIMIT_PER_HOUR)
 

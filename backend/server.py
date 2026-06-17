@@ -17,13 +17,15 @@ from logging_config import configure_logging
 configure_logging()
 
 # ── STEP 4: Now safe to import all project modules ─────────────────
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Request, BackgroundTasks
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from auth import get_current_user, router as auth_router
+from rate_limiting import rate_limit
+from security_headers import SecurityHeadersMiddleware
 from routes_activity import router as activity_router
 from routes_billing import router as billing_router, webhook_router as billing_webhook
 from routes_cv import router as cv_router
@@ -37,7 +39,6 @@ from routes_insights import router as insights_router
 from routes_interview import router as interview_router
 from routes_jobs import router as jobs_router
 from routes_notifications import router as notifications_router
-from routes_onboarding import router as onboarding_router
 from routes_orchestrator import router as orchestrator_router
 from routes_admin import router as admin_router
 from routes_memory import router as memory_router
@@ -69,6 +70,8 @@ def _validate_environment() -> None:
             errors.append("ADMIN_TOKEN is required in production")
         if not _cfg.CRON_TOKEN:
             errors.append("CRON_TOKEN is required in production")
+        if _cfg.ADMIN_TOKEN and _cfg.CRON_TOKEN and _cfg.ADMIN_TOKEN == _cfg.CRON_TOKEN:
+            errors.append("ADMIN_TOKEN and CRON_TOKEN must be different values in production")
 
     if errors:
         for e in errors:
@@ -117,6 +120,7 @@ app = FastAPI(
     version="2.1.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    dependencies=[Depends(rate_limit)],   # 60 req/min per IP globally; exempts /health, /docs, webhooks
 )
 
 app.include_router(auth_router)
@@ -129,7 +133,6 @@ app.include_router(billing_router)
 app.include_router(billing_webhook)
 app.include_router(notifications_router)
 app.include_router(activity_router)
-app.include_router(onboarding_router)
 app.include_router(gmail_router)
 app.include_router(cv_intel_router)
 app.include_router(cv_router)
@@ -216,17 +219,42 @@ async def seed_for_user(user=Depends(get_current_user)):
 
 @app.on_event("startup")
 async def on_startup():
-    """Startup hook - initialize database and indexes."""
+    """Startup hook — initialize database, indexes, and event subscribers.
+
+    DB initialization retries briefly (transient network blips), then
+    fails hard. A backend that "starts" without a working DB would pass
+    the liveness probe while every real request 500s — worse than crashing.
+    """
+    import asyncio
     import logging
     logger = logging.getLogger(__name__)
-    
+
+    from db import init_db
+    last_exc: Exception | None = None
+    for attempt in range(1, 4):
+        try:
+            await init_db()
+            logger.info("✅ Database initialized with indexes (attempt %d)", attempt)
+            break
+        except Exception as e:
+            last_exc = e
+            logger.warning("⚠️ DB init attempt %d/3 failed: %s", attempt, e)
+            if attempt < 3:
+                await asyncio.sleep(2 * attempt)
+    else:
+        logger.critical("❌ Database initialization failed after 3 attempts — aborting startup")
+        raise RuntimeError(f"Database initialization failed: {last_exc}")
+
+    # Wire cross-feature event subscribers (skill-gap review, salary
+    # comparison seeding, interview-prep context, CV tailor hints, etc.)
+    # Previously defined but never called — workflows were silently inert.
     try:
-        from db import init_db
-        await init_db()
-        logger.info("✅ Database initialized with indexes")
+        from orchestrator import wire_subscribers
+        wire_subscribers()
+        logger.info("✅ Event subscribers wired")
     except Exception as e:
-        logger.warning(f"⚠️ Database initialization warning: {e}")
-    
+        logger.error("❌ wire_subscribers() failed: %s", e, exc_info=True)
+
     logger.info("✅ Application started")
 
 
@@ -256,15 +284,16 @@ async def cron_welcome_emails(request: Request):
 
 
 @app.post("/api/internal/consolidate-memory")
-async def consolidate_memory_endpoint(request: Request):
+async def consolidate_memory_endpoint(request: Request, background_tasks: BackgroundTasks):
     """Daily cron — consolidates career events into AI notes."""
-    if request.headers.get("x-cron-token","") != _cfg.CRON_TOKEN:
+    if request.headers.get("x-cron-token", "") != _cfg.CRON_TOKEN:
         from fastapi import HTTPException
         raise HTTPException(401, "Unauthorized")
-    from fastapi.background import BackgroundTasks
     from memory_consolidation import run_consolidation_batch
-    bg = BackgroundTasks()
-    bg.add_task(run_consolidation_batch)
+    # FastAPI-injected BackgroundTasks actually runs after the response is
+    # sent. A manually-constructed BackgroundTasks() object that is never
+    # awaited or returned is silently discarded — the task never executes.
+    background_tasks.add_task(run_consolidation_batch)
     return {"ok": True, "message": "Memory consolidation running in background"}
 
 
@@ -290,6 +319,7 @@ class _RequestIDMiddleware(BaseHTTPMiddleware):
         return response
 
 app.add_middleware(_RequestIDMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 
 # ── Global exception handler (FastAPI built-in, not BaseHTTPMiddleware) ──
 
@@ -312,10 +342,16 @@ async def validation_exception_handler(request, exc):
 # Parse CORS origins from comma-separated string
 _cors_origins = [o.strip() for o in _cfg.CORS_ORIGINS.split(",") if o.strip()]
 if not _cors_origins:
-    _cors_origins = ["*"]
+    _cors_origins = ["http://localhost:3000"]
+
+# SECURITY: Block deployment if CORS is wildcard in production/staging
+if _cfg.ENVIRONMENT in ("production", "staging") and "*" in _cors_origins:
+    raise RuntimeError(
+        "❌ CORS_ORIGINS='*' is forbidden in production. "
+        "Set CORS_ORIGINS to your frontend URL (e.g. https://myapp.com)"
+    )
 
 # SECURITY: credentials=True requires specific origins, not "*"
-# When CORS_ORIGINS="*" (dev mode), disable credentials to avoid browser rejection
 _allow_credentials = "*" not in _cors_origins
 
 app.add_middleware(

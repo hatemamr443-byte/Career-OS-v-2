@@ -79,7 +79,7 @@ async def init_indexes() -> None:
         db.users.create_index("created_at"),
         # Sessions
         db.user_sessions.create_index("session_token", unique=True),
-        db.user_sessions.create_index("expires_at"),
+        db.user_sessions.create_index("expires_at", expireAfterSeconds=0),
         # Jobs — text index for search (replaces regex scans)
         db.jobs.create_index("job_id", unique=True, sparse=True),
         db.jobs.create_index([("title", "text"), ("description", "text"), ("company", "text")]),
